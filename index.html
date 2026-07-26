@@ -451,10 +451,24 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
 
   const ymdFromTs = ts => new Date(ts * 1000).toISOString().slice(0,10); // yyyy-mm-dd
 
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  // Run tasks with a small concurrency cap. Opening 20 connections at once is
+  // what weak mobile links (and shared carrier IPs hitting rate limits) choke on.
+  async function pooled(items, limit, worker){
+    const queue = items.slice();
+    await Promise.all(Array.from({ length: Math.min(limit, queue.length) }, async () => {
+      while (queue.length){
+        const item = queue.shift();
+        try { await worker(item); } catch {}
+      }
+    }));
+  }
+
   // Historical BTC/USD for a given day, via mempool.space. (CoinGecko's free
   // historical endpoint now returns 401.) Cached per day; nulls are NOT cached
   // so a transient failure can retry on the next pass.
-  async function fetchHistoricalPrice(ymd){
+  async function fetchHistoricalPrice(ymd, attempt = 0){
     if (priceCache[ymd] != null) return priceCache[ymd];
     const today = new Date().toISOString().slice(0,10);
     if (ymd >= today) return null;                 // today: fall back to the live price
@@ -464,13 +478,20 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       const usd = j?.prices?.[0]?.USD ?? null;
       if (usd != null) { priceCache[ymd] = usd; savePrices(priceCache); }
       return usd;
-    } catch { return null; }
+    } catch (e) {
+      // back off and retry — covers dropped connections and 429s on a busy link
+      if (attempt < 2){
+        await sleep(700 * (attempt + 1) + Math.random() * 400);
+        return fetchHistoricalPrice(ymd, attempt + 1);
+      }
+      return null;
+    }
   }
 
   async function fetchPricesForDates(dates){
-    // dedupe and fetch in parallel (mempool.space has no tight rate limit)
-    const unique = [...new Set(dates.filter(Boolean))];
-    await Promise.all(unique.map(ymd => fetchHistoricalPrice(ymd).catch(() => null)));
+    // dedupe, drop anything already cached, then fetch a few at a time
+    const unique = [...new Set(dates.filter(Boolean))].filter(d => priceCache[d] == null);
+    await pooled(unique, 4, ymd => fetchHistoricalPrice(ymd));
   }
 
   // ---------- mempool.space ----------
@@ -1220,7 +1241,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       await refreshLivePrice();
       const flashIds = new Set();
       const notes = [];
-      await Promise.all(watchlist.map(async w => {
+      await pooled(watchlist, 3, async w => {
         try {
           let cur;
           if (w.kind === 'addr'){ const info = await getAddress(w.id); cur = snapForAddr(info); }
@@ -1236,7 +1257,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
           if (!changedNow) w._notified = false;
           w.changed = changedNow;
         } catch {}
-      }));
+      });
       saveWatch();
       if (notes.length === 1) notify('Watchlist update', `${notes[0].label || shortId(notes[0].id)} changed`);
       else if (notes.length > 1) notify('Watchlist update', `${notes.length} watched items changed`);
