@@ -1444,6 +1444,13 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   paintTicker();
   refreshLivePrice();
 
+  // Offline shell: once the app has loaded successfully it is kept on the
+  // device, so a slow or dropped connection can't stop it from starting.
+  // Relative path so it works both at a domain root and in a /repo/ subfolder.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  }
+
   // boot: open a deep-linked query, otherwise show the watchlist dashboard
   const initial = new URLSearchParams(location.search).get('q');
   if (initial) runQuery(initial);
