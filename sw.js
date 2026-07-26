@@ -10,9 +10,17 @@
 // cached copy after NET_TIMEOUT instead of hanging. The cache is refreshed in
 // the background either way.
 
-const CACHE = 'btc-lookup-v1';
+const CACHE = 'btc-lookup-v2';   // v2: v1 could cache other pages as the shell
 const SHELL = './index.html';
 const NET_TIMEOUT = 2500;
+
+// The app's own address, e.g. "/" or "/btc-lookup/". Anything else served from
+// this origin (diag.html, etc.) must pass straight through to the network —
+// otherwise it would be answered with the cached app.
+const BASE = new URL('./', self.location).pathname;
+function isShellRequest(url){
+  return url.pathname === BASE || url.pathname === BASE + 'index.html';
+}
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -32,8 +40,10 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
-  if (new URL(req.url).origin !== self.location.origin) return;  // live BTC data
-  if (req.mode !== 'navigate') return;                           // only the page itself
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return;  // live BTC data
+  if (req.mode !== 'navigate') return;              // only page loads
+  if (!isShellRequest(url)) return;                 // let diag.html & friends through
 
   event.respondWith((async () => {
     const cache = await caches.open(CACHE);
