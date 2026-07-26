@@ -536,10 +536,19 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     }
     return r.json();
   }
-  const getAddress    = a => getJson(`${MS}/address/${a}`);
-  const getAddressTxs = (a, lastSeen) => getJson(`${MS}/address/${a}/txs${lastSeen ? '/chain/' + lastSeen : ''}`);
-  const getTx         = t => getJson(`${MS}/tx/${t}`);
-  const getTipHeight  = () => getJson(`${MS}/blocks/tip/height`);
+  // blockstream.info serves the same Esplora API as mempool.space. Either one can
+  // stall for tens of seconds without warning, so chain lookups ask both at once
+  // and take whichever answers first — a slow provider can no longer hang the app.
+  const ALT = 'https://blockstream.info/api';
+  function getChain(pathname){
+    const ask = base => getJson(base + pathname);
+    if (typeof Promise.any === 'function') return Promise.any([ask(MS), ask(ALT)]);
+    return Promise.race([ask(MS), ask(ALT)]);            // very old browsers
+  }
+  const getAddress    = a => getChain(`/address/${a}`);
+  const getAddressTxs = (a, lastSeen) => getChain(`/address/${a}/txs${lastSeen ? '/chain/' + lastSeen : ''}`);
+  const getTx         = t => getChain(`/tx/${t}`);
+  const getTipHeight  = () => getChain(`/blocks/tip/height`);
   const getFees       = () => getJson(`${MS}/v1/fees/recommended`);   // sat/vB: fastestFee, halfHourFee, hourFee…
 
   // current BTC/USD price (used for ticker + "value today" + same-day txs).
@@ -607,6 +616,8 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
 
   // translate raw API/network errors into something a human can act on
   function friendlyError(e, q){
+    // Promise.any bundles the providers' failures — report the first real one
+    if (e && e.errors && e.errors.length) e = e.errors.find(x => x && x.message) || e;
     const m = String((e && e.message) || e);
     if (/HTTP 404/.test(m)) return looksLikeTxid(q)
       ? 'Transaction not found — double-check the hash.'

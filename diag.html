@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>BTC Lookup — connection test</title>
+<style>
+  body{margin:0;padding:16px;background:#0f1216;color:#e6e8eb;
+       font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  h1{font-size:19px;margin:0 0 4px}
+  .sub{color:#9aa3ad;font-size:13px;margin-bottom:16px}
+  .row{border:1px solid #262b31;border-radius:10px;padding:10px 12px;margin-bottom:8px;background:#161b21}
+  .name{font-size:13px;color:#9aa3ad}
+  .val{font-size:17px;font-weight:700;margin-top:2px;word-break:break-word}
+  .ok{color:#3ddc84} .bad{color:#ff6b6b} .warn{color:#e0a93b} .pend{color:#9aa3ad}
+  button{width:100%;padding:14px;margin-top:12px;border:0;border-radius:10px;
+         background:#f7931a;color:#fff;font-size:17px;font-weight:700}
+  #sum{margin-top:14px;padding:12px;border-radius:10px;background:#1a1f25;font-size:15px}
+</style>
+</head>
+<body>
+<h1>Connection test</h1>
+<div class="sub">Run this on the phone when the app misbehaves. Screenshot the result.</div>
+<div id="out"></div>
+<button id="again">Run again</button>
+<div id="sum">Running…</div>
+
+<script>
+(function(){
+  var out = document.getElementById('out');
+  function row(name, id){
+    var d = document.createElement('div');
+    d.className = 'row';
+    d.innerHTML = '<div class="name">' + name + '</div><div class="val pend" id="' + id + '">…</div>';
+    out.appendChild(d);
+  }
+  function set(id, text, cls){
+    var e = document.getElementById(id);
+    if (e){ e.textContent = text; e.className = 'val ' + (cls || ''); }
+  }
+
+  // times a fetch and reports ms + size, or the failure reason
+  function timed(id, url, label){
+    var t0 = Date.now();
+    return fetch(url, { cache: 'no-store' })
+      .then(function(r){ return r.text().then(function(t){
+        var ms = Date.now() - t0;
+        var cls = ms < 2000 ? 'ok' : ms < 6000 ? 'warn' : 'bad';
+        set(id, 'HTTP ' + r.status + ' · ' + ms + ' ms · ' + Math.round(t.length/1024) + ' KB', r.ok ? cls : 'bad');
+        return { ok: r.ok, ms: ms };
+      });})
+      .catch(function(e){
+        set(id, 'FAILED after ' + (Date.now()-t0) + ' ms — ' + e.message, 'bad');
+        return { ok: false, ms: Date.now() - t0 };
+      });
+  }
+
+  function run(){
+    out.innerHTML = '';
+    document.getElementById('sum').textContent = 'Running…';
+
+    row('Network type (what the phone reports)', 'net');
+    row('Online flag', 'onl');
+    row('Service worker', 'sw');
+    row('App saved on device (offline copy)', 'cache');
+    row('1. This page reloaded from server', 'self');
+    row('2. The app file (index.html, ~90 KB)', 'app');
+    row('3. Bitcoin data — mempool.space', 'mp');
+    row('4. Backup price source — CoinGecko', 'cg');
+    row('Browser', 'ua');
+
+    var c = navigator.connection || {};
+    set('net', (c.effectiveType || 'unknown') + (c.downlink ? ' · ~' + c.downlink + ' Mbps' : '') +
+               (c.rtt ? ' · ' + c.rtt + ' ms latency' : '') + (c.saveData ? ' · DATA SAVER ON' : ''),
+        c.saveData ? 'warn' : (c.effectiveType === '4g' ? 'ok' : 'warn'));
+    set('onl', navigator.onLine ? 'online' : 'OFFLINE', navigator.onLine ? 'ok' : 'bad');
+    set('ua', navigator.userAgent.slice(0, 90), '');
+
+    if (!('serviceWorker' in navigator)) {
+      set('sw', 'not supported by this browser', 'bad');
+    } else {
+      navigator.serviceWorker.getRegistration().then(function(reg){
+        if (!reg) set('sw', 'NOT registered — open the app once first', 'warn');
+        else set('sw', 'registered · ' + (reg.active ? reg.active.state : 'installing'),
+                 reg.active ? 'ok' : 'warn');
+      }).catch(function(e){ set('sw', 'error: ' + e.message, 'bad'); });
+    }
+
+    if (!window.caches) set('cache', 'not supported', 'warn');
+    else caches.keys().then(function(keys){
+      if (keys.indexOf('btc-lookup-v1') < 0) return set('cache', 'no offline copy yet', 'warn');
+      return caches.open('btc-lookup-v1').then(function(ch){
+        return ch.match('./index.html').then(function(m){
+          set('cache', m ? 'YES — app can open without network' : 'cache exists but empty',
+              m ? 'ok' : 'warn');
+        });
+      });
+    }).catch(function(e){ set('cache', 'error: ' + e.message, 'bad'); });
+
+    var t = [];
+    t.push(timed('self', 'diag.html?probe=' + Date.now()));
+    t.push(timed('app',  'index.html?probe=' + Date.now()));
+    t.push(timed('mp',   'https://mempool.space/api/blocks/tip/height'));
+    t.push(timed('cg',   'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd'));
+
+    Promise.all(t).then(function(r){
+      var siteOk = r[0].ok && r[1].ok, dataOk = r[2].ok || r[3].ok, msg;
+      if (siteOk && dataOk)      msg = 'Everything reachable right now. If the app still misbehaved a moment ago, the problem is intermittent — run this again the moment it fails.';
+      else if (!siteOk && !dataOk) msg = 'Nothing is reachable — this phone has no working internet path at all right now (DNS or connection), not an app problem.';
+      else if (!siteOk)          msg = 'The website could not be fetched but Bitcoin data could. That points at how this phone reaches the host — DNS, or the page being blocked.';
+      else                       msg = 'The website loads but Bitcoin data does not. mempool.space is blocked or unreachable from this phone.';
+      document.getElementById('sum').textContent = msg;
+    });
+  }
+
+  document.getElementById('again').addEventListener('click', run);
+  run();
+})();
+</script>
+</body>
+</html>
