@@ -488,10 +488,42 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     }
   }
 
+  // One request returns mempool's whole daily price history, which we keep. That
+  // replaces up to 20 round-trips per lookup with a single one — and after it has
+  // been cached, repeat lookups need no price requests at all.
+  let bulkTried = false;
+  async function loadBulkPrices(){
+    const WEEK = 7 * 86400000;
+    if (priceCache.__bulk && Date.now() - priceCache.__bulk < WEEK) return true;
+    if (bulkTried) return false;
+    bulkTried = true;
+    try {
+      const j = await getJson(`${MS}/v1/historical-price?currency=USD`);
+      const arr = j && j.prices;
+      if (!Array.isArray(arr) || !arr.length) return false;
+      for (const p of arr){                       // newest first: keep one price per day
+        if (p && p.time && p.USD != null){
+          const d = new Date(p.time * 1000).toISOString().slice(0,10);
+          if (priceCache[d] == null) priceCache[d] = p.USD;
+        }
+      }
+      priceCache.__bulk = Date.now();
+      savePrices(priceCache);
+      return true;
+    } catch { return false; }
+  }
+
   async function fetchPricesForDates(dates){
-    // dedupe, drop anything already cached, then fetch a few at a time
-    const unique = [...new Set(dates.filter(Boolean))].filter(d => priceCache[d] == null);
-    await pooled(unique, 4, ymd => fetchHistoricalPrice(ymd));
+    // dedupe, drop anything already cached
+    let unique = [...new Set(dates.filter(Boolean))].filter(d => priceCache[d] == null);
+    if (!unique.length) return;
+    // more than a couple of gaps? grab the whole history in one go instead
+    if (unique.length > 2){
+      await loadBulkPrices();
+      unique = unique.filter(d => priceCache[d] == null);
+      if (!unique.length) return;
+    }
+    await pooled(unique, 4, ymd => fetchHistoricalPrice(ymd));   // fallback / recent days
   }
 
   // ---------- mempool.space ----------
