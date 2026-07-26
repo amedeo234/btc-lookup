@@ -1,0 +1,1386 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>BTC Lookup — address & transaction explorer</title>
+<meta name="description" content="Look up any Bitcoin address or transaction — live balance, USD values, confirmations, fees, and a watchlist with alerts." />
+<meta name="theme-color" id="metaTheme" content="#ffffff" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27 viewBox%3D%270 0 64 64%27%3E%3Crect width%3D%2764%27 height%3D%2764%27 rx%3D%2714%27 fill%3D%27%23f7931a%27%2F%3E%3Ctext x%3D%2732%27 y%3D%2746%27 font-family%3D%27Georgia%2Cserif%27 font-size%3D%2740%27 font-weight%3D%27800%27 fill%3D%27%23fff%27 text-anchor%3D%27middle%27%3E%E2%82%BF%3C%2Ftext%3E%3C%2Fsvg%3E" />
+<link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22BTC%20Lookup%22%2C%22short_name%22%3A%22BTC%20Lookup%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230f1216%22%2C%22theme_color%22%3A%22%23f7931a%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%20xmlns%253D%2527http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2527%20viewBox%253D%25270%200%2064%2064%2527%253E%253Crect%20width%253D%252764%2527%20height%253D%252764%2527%20rx%253D%252714%2527%20fill%253D%2527%2523f7931a%2527%252F%253E%253Ctext%20x%253D%252732%2527%20y%253D%252746%2527%20font-family%253D%2527Georgia%252Cserif%2527%20font-size%253D%252740%2527%20font-weight%253D%2527800%2527%20fill%253D%2527%2523fff%2527%20text-anchor%253D%2527middle%2527%253E%25E2%2582%25BF%253C%252Ftext%253E%253C%252Fsvg%253E%22%2C%22sizes%22%3A%22any%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%2C%22purpose%22%3A%22any%22%7D%5D%7D" />
+<script>
+  // set theme before paint to avoid a flash
+  (function(){ try { var t = localStorage.getItem('btc-lookup:theme');
+    if (t !== 'dark' && t !== 'light') t = (window.matchMedia && matchMedia('(prefers-color-scheme:dark)').matches) ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', t); } catch(e){} })();
+</script>
+<style>
+  :root{
+    --bg:#ffffff;
+    --fg:#1c1f23;
+    --muted:#6b7280;
+    --line:#e7e9ec;
+    --line-strong:#d4d7dc;
+    --accent:#0b69ff;
+    --green:#0d8a3a;
+    --red:#c0392b;
+    --chip:#f4f6f8;
+    --chip-hover:#eef0f3;
+    --chip-fg:#374151;
+    --card:#ffffff;
+    --th-bg:#fafbfc;
+    --btn-bg:#1c1f23;
+    --btn-fg:#ffffff;
+    --ticker-bg:#1c1f23;
+    --ticker-fg:#ffffff;
+    --pending:#9a6b00;
+    --ok-bg:#e7f6ec;
+    --cust-bg:#fff1dd;
+    --cust-fg:#9a6b00;
+    --active-bg:#fff8ef;
+    --flash-bg:#fff7d6;
+    --shadow:0 1px 2px rgba(0,0,0,.04), 0 6px 24px rgba(0,0,0,.05);
+    --radius:12px;
+  }
+  :root[data-theme="dark"]{
+    --bg:#0f1216;
+    --fg:#e6e8eb;
+    --muted:#9aa3ad;
+    --line:#262b31;
+    --line-strong:#3a414a;
+    --accent:#5b9cff;
+    --green:#3ddc84;
+    --red:#ff6b6b;
+    --chip:#1a1f25;
+    --chip-hover:#222831;
+    --chip-fg:#c2c8d0;
+    --card:#161b21;
+    --th-bg:#1a1f25;
+    --btn-bg:#e6e8eb;
+    --btn-fg:#0f1216;
+    --ticker-bg:#1a1f25;
+    --ticker-fg:#e6e8eb;
+    --pending:#e0a93b;
+    --ok-bg:rgba(61,220,132,.15);
+    --cust-bg:rgba(247,147,26,.20);
+    --cust-fg:#f3b95f;
+    --active-bg:#241c10;
+    --flash-bg:#3a3320;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 28px rgba(0,0,0,.55);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:760px;margin:0 auto;padding:24px 16px 80px}
+  header{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+  .logo{
+    width:32px;height:32px;border-radius:8px;
+    background:#f7931a;display:grid;place-items:center;
+    color:#fff;font-weight:800;font-family:Georgia,serif;flex:none;
+  }
+  h1{font-size:20px;margin:0;font-weight:700}
+  .sub{color:var(--muted);font-size:13px;margin-top:2px}
+  .theme-toggle{
+    margin-left:auto;flex:none;border:1px solid var(--line-strong);background:var(--card);color:var(--fg);
+    border-radius:8px;width:36px;height:36px;font-size:16px;cursor:pointer;display:grid;place-items:center;
+  }
+  .theme-toggle:hover{background:var(--chip-hover)}
+
+  .search{
+    display:flex;gap:8px;margin:14px 0 8px;
+    border:1px solid var(--line-strong);border-radius:var(--radius);
+    background:var(--card);box-shadow:var(--shadow);padding:6px;
+  }
+  .search input{
+    flex:1;border:0;outline:0;font:15px/1.4 inherit;
+    padding:10px 12px;background:transparent;color:var(--fg);
+    min-width:0;
+  }
+  .search button{
+    border:0;background:var(--btn-bg);color:var(--btn-fg);border-radius:8px;
+    padding:10px 16px;font-weight:600;cursor:pointer;
+  }
+  .search button:disabled{opacity:.6;cursor:wait}
+  .hint{color:var(--muted);font-size:12.5px;padding:2px 4px}
+
+  .examples{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .examples button{
+    border:1px solid var(--line);background:var(--chip);color:var(--chip-fg);
+    border-radius:999px;padding:5px 10px;font-size:12px;cursor:pointer;
+  }
+  .examples button:hover{background:var(--chip-hover)}
+
+  /* Auto-refresh status bar */
+  .bar{
+    display:none;align-items:center;flex-wrap:wrap;gap:8px 12px;
+    margin:10px 0 0;padding:8px 10px;font-size:12.5px;color:var(--muted);
+    border:1px solid var(--line);border-radius:10px;background:var(--chip);
+  }
+  .bar.show{display:flex}
+  .bar label{display:inline-flex;align-items:center;gap:6px;color:var(--fg);cursor:pointer;user-select:none}
+  .bar .dot{width:8px;height:8px;border-radius:50%;background:#cbd5e1;flex:none}
+  .bar.live .dot{background:var(--green);animation:pulse 2s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(13,138,58,.5)}70%{box-shadow:0 0 0 6px rgba(13,138,58,0)}100%{box-shadow:0 0 0 0 rgba(13,138,58,0)}}
+  .bar .upd{margin-right:auto}
+  .bar .iconbtn{
+    border:1px solid var(--line-strong);background:var(--card);color:var(--fg);
+    border-radius:8px;padding:5px 10px;cursor:pointer;font:inherit;font-size:12.5px;
+  }
+  .bar .iconbtn:hover{background:var(--chip-hover)}
+  .bar .iconbtn:disabled{opacity:.55;cursor:default}
+  .bar .iconbtn.on{color:#f7931a;border-color:#f7931a}
+  tr.flash td{animation:rowflash 2.4s ease-out 1}
+  @keyframes rowflash{0%,55%{background:var(--flash-bg)}100%{background:transparent}}
+  @media (prefers-reduced-motion:reduce){
+    .bar.live .dot{animation:none}
+    tr.flash td{animation:none}
+  }
+
+  /* Custom BTC price override */
+  .custom{
+    display:flex;align-items:center;flex-wrap:wrap;gap:8px;
+    margin:10px 0 0;padding:8px 10px;
+    border:1px solid var(--line);border-radius:10px;background:var(--card);
+  }
+  .custom .clabel{color:var(--muted);font-size:12.5px}
+  .custom .cdollar{color:var(--muted);font-weight:700}
+  .custom input{
+    width:140px;border:1px solid var(--line-strong);border-radius:8px;
+    padding:7px 10px;font:inherit;font-size:14px;outline:0;background:var(--card);color:var(--fg);
+    font-variant-numeric:tabular-nums;
+  }
+  .custom input:focus{border-color:#f7931a}
+  .custom .apply{border:0;background:#f7931a;color:#fff;border-radius:8px;padding:7px 14px;font-weight:600;cursor:pointer;font:inherit}
+  .custom .apply:hover{filter:brightness(.96)}
+  .custom .clear{border:1px solid var(--line-strong);background:var(--card);color:var(--fg);border-radius:8px;padding:7px 12px;cursor:pointer;font:inherit}
+  .custom .clear:hover{background:var(--chip-hover)}
+  .custom .note{color:var(--cust-fg);font-size:12px;margin-left:auto}
+  .custom.active{border-color:#f7931a;background:var(--active-bg)}
+  .badge.ok{background:var(--ok-bg);color:var(--green)}
+  .badge.cust{background:var(--cust-bg);color:var(--cust-fg)}
+  /* confirmation ramp: 1 (least settled) → 5, then green at 6+ */
+  .badge.c1{background:#fdeceb;color:#c0392b}
+  .badge.c2{background:#fdeede;color:#cf5a13}
+  .badge.c3{background:#fdf4e3;color:#b9790c}
+  .badge.c4{background:#f5f5d6;color:#7e7c10}
+  .badge.c5{background:#edf6da;color:#5c8f1d}
+  :root[data-theme="dark"] .badge.c1{background:rgba(255,107,107,.16);color:#ff8a8a}
+  :root[data-theme="dark"] .badge.c2{background:rgba(240,120,50,.16);color:#f2a662}
+  :root[data-theme="dark"] .badge.c3{background:rgba(230,170,40,.16);color:#e6c054}
+  :root[data-theme="dark"] .badge.c4{background:rgba(190,190,60,.14);color:#cfce6a}
+  :root[data-theme="dark"] .badge.c5{background:rgba(120,200,80,.16);color:#a3dd6a}
+
+  /* Live BTC/USD price ticker */
+  .ticker{
+    display:inline-block;min-width:150px;
+    background:var(--ticker-bg);color:var(--ticker-fg);border:1px solid transparent;border-radius:12px;
+    padding:10px 14px;margin:0 0 6px;box-shadow:var(--shadow);
+  }
+  :root[data-theme="dark"] .ticker{border-color:var(--line)}
+  .ticker[hidden]{display:none}
+  .tk-label{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:#9aa0a6;font-weight:700}
+  .tk-row{display:flex;align-items:center;gap:8px;margin-top:3px}
+  .tk-dot{width:8px;height:8px;border-radius:50%;background:#3ddc84;flex:none;animation:pulse 2s infinite}
+  .tk-price{font-size:22px;font-weight:800;line-height:1.1}
+  .tk-chg{font-size:12px;font-weight:700;white-space:nowrap}
+  .tk-chg.up{color:#3ddc84}
+  .tk-chg.down{color:#ff6b6b}
+  .tk-ago{font-size:11px;color:#9aa0a6;margin-top:3px}
+  @media (prefers-reduced-motion:reduce){ .tk-dot{animation:none} }
+
+  .card{
+    border:1px solid var(--line);border-radius:var(--radius);
+    background:var(--card);box-shadow:var(--shadow);
+    margin:18px 0;overflow:hidden;
+  }
+  .card .head{
+    padding:14px 16px;border-bottom:1px solid var(--line);
+    display:flex;flex-wrap:wrap;gap:8px 14px;align-items:baseline;
+  }
+  .card .head .label{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+  .card .head .value{font-weight:600}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;word-break:break-all}
+
+  /* Copy button */
+  .copybtn{
+    border:1px solid var(--line-strong);background:var(--card);color:var(--fg);
+    border-radius:6px;padding:1px 7px;font-size:11px;cursor:pointer;margin-left:6px;vertical-align:middle;
+  }
+  .copybtn:hover{background:var(--chip-hover)}
+  .copybtn.ok{color:var(--green);border-color:var(--green)}
+
+  /* QR code (kept on white so it stays scannable in any theme) */
+  .qrwrap{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+  .qrbox{background:#fff;padding:10px;border-radius:8px;line-height:0;flex:none}
+  .qrbox svg{display:block;width:132px;height:132px}
+  .qrcap{color:var(--muted);font-size:12.5px}
+
+  /* Confirmation progress */
+  .confbar{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .confbar .lbl{font-size:12.5px;color:var(--muted)}
+  .confbar select{border:1px solid var(--line-strong);background:var(--card);color:var(--fg);border-radius:7px;padding:4px 6px;font:inherit;font-size:13px}
+  .progress{flex:1;min-width:120px;height:8px;background:var(--chip);border-radius:999px;overflow:hidden}
+  .progress > div{height:100%;background:var(--green);border-radius:999px;transition:width .4s ease}
+  .confbar .pct{font-size:12.5px;font-weight:600;white-space:nowrap}
+  .confbar.met .pct{color:var(--green)}
+  .fee-verdict{white-space:normal}
+  .fee-verdict.good{color:var(--green)}
+  .fee-verdict.warn{color:var(--pending)}
+  .fee-verdict.bad{color:var(--red)}
+
+  /* Watchlist */
+  header .logo, header h1{cursor:pointer}
+  .watchbtn{
+    border:1px solid var(--line-strong);background:var(--card);color:var(--fg);
+    border-radius:6px;padding:1px 7px;font-size:11px;cursor:pointer;margin-left:6px;vertical-align:middle;
+  }
+  .watchbtn:hover{background:var(--chip-hover)}
+  .watchbtn.on{color:#f7931a;border-color:#f7931a}
+  .wl-head-actions{margin-left:auto;display:flex;align-items:center;gap:10px}
+  .wl-item{display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid var(--line);cursor:pointer}
+  .wl-item:hover{background:var(--chip)}
+  .wl-dot{width:9px;height:9px;border-radius:50%;background:#cbd5e1;flex:none}
+  .wl-dot.changed{background:var(--green);animation:pulse 2s infinite}
+  .wl-dot.pending{background:var(--pending)}
+  .wl-main{min-width:0;flex:1}
+  .wl-label{font-weight:600;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .wl-id{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .wl-meta{text-align:right;white-space:nowrap}
+  .wl-bal{font-weight:600;font-variant-numeric:tabular-nums}
+  .wl-usd{color:var(--muted);font-size:12.5px}
+  .wl-x{border:0;background:transparent;color:var(--muted);font-size:18px;line-height:1;cursor:pointer;padding:2px 6px;flex:none}
+  .wl-edit{font-size:14px}
+  .wl-edit:hover{color:var(--accent)}
+  .wl-x:hover{color:var(--red)}
+  .wl-item.flash{animation:wlflash 2.4s ease-out 1}
+  @keyframes wlflash{0%,55%{background:var(--flash-bg)}100%{background:transparent}}
+  @media (prefers-reduced-motion:reduce){ .wl-dot.changed{animation:none} .wl-item.flash{animation:none} }
+
+  .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line)}
+  .stats > div{background:var(--card);padding:12px 16px}
+  .stats .k{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+  .stats .v{font-weight:600;margin-top:2px}
+  @media (min-width:560px){ .stats{grid-template-columns:repeat(4,1fr)} }
+
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:11px 14px;text-align:left;border-top:1px solid var(--line);vertical-align:top}
+  th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600;background:var(--th-bg)}
+  td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  th.num{text-align:right}
+  td .when{color:var(--muted);font-size:12px;margin-top:2px}
+  td .txid{display:inline-block;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
+  .pos{color:var(--green);font-weight:600}
+  .neg{color:var(--red);font-weight:600}
+  .pending{color:var(--pending);font-weight:600}
+  .badge{display:inline-block;background:var(--chip);color:var(--chip-fg);border-radius:999px;padding:2px 8px;font-size:11px;margin-left:6px}
+
+  .empty,.error,.loading{padding:24px;text-align:center;color:var(--muted)}
+  .error{color:var(--red)}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--line-strong);border-top-color:var(--fg);border-radius:50%;animation:s 1s linear infinite;vertical-align:-3px;margin-right:6px}
+  @keyframes s{to{transform:rotate(360deg)}}
+
+  .more{padding:12px;text-align:center;border-top:1px solid var(--line)}
+  .more button{border:1px solid var(--line-strong);background:var(--card);color:var(--fg);border-radius:8px;padding:8px 14px;cursor:pointer;font:inherit}
+  .more button:hover{background:var(--chip-hover)}
+
+  footer{color:var(--muted);font-size:12px;text-align:center;margin-top:30px}
+  footer a{color:var(--muted);text-decoration:underline}
+
+  /* Compact mobile table */
+  @media (max-width:520px){
+    th,td{padding:10px}
+    td .txid{max-width:120px}
+    .stats > div{padding:10px 12px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">₿</div>
+    <div>
+      <h1>BTC Lookup</h1>
+      <div class="sub">Search a Bitcoin address or transaction hash. USD value shown at the time of each transaction.</div>
+    </div>
+    <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle dark mode" title="Toggle dark / light">🌙</button>
+  </header>
+
+  <div class="ticker" id="ticker" hidden>
+    <div class="tk-label">BTC / USD</div>
+    <div class="tk-row"><span class="tk-dot"></span><span class="tk-price" id="tkPrice">—</span><span class="tk-chg" id="tkChg"></span></div>
+    <div class="tk-ago" id="tkAgo"></div>
+  </div>
+
+  <form class="search" id="form" autocomplete="off">
+    <input id="q" type="text" placeholder="Bitcoin address or transaction hash" spellcheck="false" />
+    <button id="go" type="submit">Search</button>
+  </form>
+  <div class="hint">Auto-detects addresses (1…, 3…, bc1…) and 64-character tx hashes.</div>
+  <div class="examples">
+    <button type="button" data-q="bc1qgdjqv0av3q56jvd82tkdjpy7gdp9ut8tlqmgrpmv24sq90ecnvqqjwvw97">Example: SegWit address</button>
+    <button type="button" data-q="34xp4vRoCGJym3xR7yCVPFHoCNxv4Twseo">Example: Binance cold wallet</button>
+    <button type="button" data-q="b1fea52486ce0c62bb442b530a3f0132b826c74e473d1f2c220bfa78111c5082">Example: Pizza tx</button>
+  </div>
+  <div class="examples" id="recentRow" hidden></div>
+
+  <div class="custom" id="customRow">
+    <span class="clabel">Custom BTC price:</span>
+    <span class="cdollar">$</span>
+    <input id="customPrice" type="number" inputmode="decimal" min="0" step="any" placeholder="e.g. 95000" />
+    <button id="applyPrice" type="button" class="apply">Apply</button>
+    <button id="clearPrice" type="button" class="clear">Clear</button>
+    <span class="note" id="customNote" hidden>Using your price for all USD values</span>
+  </div>
+
+  <div class="bar" id="bar">
+    <span class="dot" title="Live updates"></span>
+    <label><input type="checkbox" id="auto" /> Auto-refresh</label>
+    <span class="upd" id="updated"></span>
+    <button class="iconbtn" id="refreshNow" type="button">Refresh now</button>
+    <button class="iconbtn" id="notify" type="button">🔔 Notify me</button>
+    <button class="iconbtn" id="sound" type="button">🔇 Sound off</button>
+    <button class="iconbtn" id="awake" type="button">📱 Keep screen on</button>
+  </div>
+
+  <div id="out"></div>
+
+  <footer>
+    Data &amp; prices: <a href="https://mempool.space/" target="_blank" rel="noopener">mempool.space</a> ·
+    Historical USD reflects the BTC/USD price around the day of the transaction.
+  </footer>
+</div>
+
+<script>
+/**
+ * Minified by jsDelivr using Terser v5.37.0.
+ * Original file: /npm/qrcode-generator@1.4.4/qrcode.js
+ *
+ * Do NOT use SRI with dynamically generated files! More information: https://www.jsdelivr.com/using-sri-with-dynamic-files
+ */
+var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],f={},c=function(t,r){o=function(t){for(var r=new Array(t),e=0;e<t;e+=1){r[e]=new Array(t);for(var n=0;n<t;n+=1)r[e][n]=null}return r}(i=4*e+17),l(0,0),l(i-7,0),l(0,i-7),s(),h(),d(t,r),e>=7&&v(t),null==a&&(a=p(e,n,u)),w(a,r)},l=function(t,r){for(var e=-1;e<=7;e+=1)if(!(t+e<=-1||i<=t+e))for(var n=-1;n<=7;n+=1)r+n<=-1||i<=r+n||(o[t+e][r+n]=0<=e&&e<=6&&(0==n||6==n)||0<=n&&n<=6&&(0==e||6==e)||2<=e&&e<=4&&2<=n&&n<=4)},h=function(){for(var t=8;t<i-8;t+=1)null==o[t][6]&&(o[t][6]=t%2==0);for(var r=8;r<i-8;r+=1)null==o[6][r]&&(o[6][r]=r%2==0)},s=function(){for(var t=B.getPatternPosition(e),r=0;r<t.length;r+=1)for(var n=0;n<t.length;n+=1){var i=t[r],a=t[n];if(null==o[i][a])for(var u=-2;u<=2;u+=1)for(var f=-2;f<=2;f+=1)o[i+u][a+f]=-2==u||2==u||-2==f||2==f||0==u&&0==f}},v=function(t){for(var r=B.getBCHTypeNumber(e),n=0;n<18;n+=1){var a=!t&&1==(r>>n&1);o[Math.floor(n/3)][n%3+i-8-3]=a}for(n=0;n<18;n+=1){a=!t&&1==(r>>n&1);o[n%3+i-8-3][Math.floor(n/3)]=a}},d=function(t,r){for(var e=n<<3|r,a=B.getBCHTypeInfo(e),u=0;u<15;u+=1){var f=!t&&1==(a>>u&1);u<6?o[u][8]=f:u<8?o[u+1][8]=f:o[i-15+u][8]=f}for(u=0;u<15;u+=1){f=!t&&1==(a>>u&1);u<8?o[8][i-u-1]=f:u<9?o[8][15-u-1+1]=f:o[8][15-u-1]=f}o[i-8][8]=!t},w=function(t,r){for(var e=-1,n=i-1,a=7,u=0,f=B.getMaskFunction(r),c=i-1;c>0;c-=2)for(6==c&&(c-=1);;){for(var g=0;g<2;g+=1)if(null==o[n][c-g]){var l=!1;u<t.length&&(l=1==(t[u]>>>a&1)),f(n,c-g)&&(l=!l),o[n][c-g]=l,-1==(a-=1)&&(u+=1,a=7)}if((n+=e)<0||i<=n){n-=e,e=-e;break}}},p=function(t,r,e){for(var n=A.getRSBlocks(t,r),o=b(),i=0;i<e.length;i+=1){var a=e[i];o.put(a.getMode(),4),o.put(a.getLength(),B.getLengthInBits(a.getMode(),t)),a.write(o)}var u=0;for(i=0;i<n.length;i+=1)u+=n[i].dataCount;if(o.getLengthInBits()>8*u)throw"code length overflow. ("+o.getLengthInBits()+">"+8*u+")";for(o.getLengthInBits()+4<=8*u&&o.put(0,4);o.getLengthInBits()%8!=0;)o.putBit(!1);for(;!(o.getLengthInBits()>=8*u||(o.put(236,8),o.getLengthInBits()>=8*u));)o.put(17,8);return function(t,r){for(var e=0,n=0,o=0,i=new Array(r.length),a=new Array(r.length),u=0;u<r.length;u+=1){var f=r[u].dataCount,c=r[u].totalCount-f;n=Math.max(n,f),o=Math.max(o,c),i[u]=new Array(f);for(var g=0;g<i[u].length;g+=1)i[u][g]=255&t.getBuffer()[g+e];e+=f;var l=B.getErrorCorrectPolynomial(c),h=k(i[u],l.getLength()-1).mod(l);for(a[u]=new Array(l.getLength()-1),g=0;g<a[u].length;g+=1){var s=g+h.getLength()-a[u].length;a[u][g]=s>=0?h.getAt(s):0}}var v=0;for(g=0;g<r.length;g+=1)v+=r[g].totalCount;var d=new Array(v),w=0;for(g=0;g<n;g+=1)for(u=0;u<r.length;u+=1)g<i[u].length&&(d[w]=i[u][g],w+=1);for(g=0;g<o;g+=1)for(u=0;u<r.length;u+=1)g<a[u].length&&(d[w]=a[u][g],w+=1);return d}(o,n)};f.addData=function(t,r){var e=null;switch(r=r||"Byte"){case"Numeric":e=M(t);break;case"Alphanumeric":e=x(t);break;case"Byte":e=m(t);break;case"Kanji":e=L(t);break;default:throw"mode:"+r}u.push(e),a=null},f.isDark=function(t,r){if(t<0||i<=t||r<0||i<=r)throw t+","+r;return o[t][r]},f.getModuleCount=function(){return i},f.make=function(){if(e<1){for(var t=1;t<40;t++){for(var r=A.getRSBlocks(t,n),o=b(),i=0;i<u.length;i++){var a=u[i];o.put(a.getMode(),4),o.put(a.getLength(),B.getLengthInBits(a.getMode(),t)),a.write(o)}var g=0;for(i=0;i<r.length;i++)g+=r[i].dataCount;if(o.getLengthInBits()<=8*g)break}e=t}c(!1,function(){for(var t=0,r=0,e=0;e<8;e+=1){c(!0,e);var n=B.getLostPoint(f);(0==e||t>n)&&(t=n,r=e)}return r}())},f.createTableTag=function(t,r){t=t||2;var e="";e+='<table style="',e+=" border-width: 0px; border-style: none;",e+=" border-collapse: collapse;",e+=" padding: 0px; margin: "+(r=void 0===r?4*t:r)+"px;",e+='">',e+="<tbody>";for(var n=0;n<f.getModuleCount();n+=1){e+="<tr>";for(var o=0;o<f.getModuleCount();o+=1)e+='<td style="',e+=" border-width: 0px; border-style: none;",e+=" border-collapse: collapse;",e+=" padding: 0px; margin: 0px;",e+=" width: "+t+"px;",e+=" height: "+t+"px;",e+=" background-color: ",e+=f.isDark(n,o)?"#000000":"#ffffff",e+=";",e+='"/>';e+="</tr>"}return e+="</tbody>",e+="</table>"},f.createSvgTag=function(t,r,e,n){var o={};"object"==typeof arguments[0]&&(t=(o=arguments[0]).cellSize,r=o.margin,e=o.alt,n=o.title),t=t||2,r=void 0===r?4*t:r,(e="string"==typeof e?{text:e}:e||{}).text=e.text||null,e.id=e.text?e.id||"qrcode-description":null,(n="string"==typeof n?{text:n}:n||{}).text=n.text||null,n.id=n.text?n.id||"qrcode-title":null;var i,a,u,c,g=f.getModuleCount()*t+2*r,l="";for(c="l"+t+",0 0,"+t+" -"+t+",0 0,-"+t+"z ",l+='<svg version="1.1" xmlns="http://www.w3.org/2000/svg"',l+=o.scalable?"":' width="'+g+'px" height="'+g+'px"',l+=' viewBox="0 0 '+g+" "+g+'" ',l+=' preserveAspectRatio="xMinYMin meet"',l+=n.text||e.text?' role="img" aria-labelledby="'+y([n.id,e.id].join(" ").trim())+'"':"",l+=">",l+=n.text?'<title id="'+y(n.id)+'">'+y(n.text)+"</title>":"",l+=e.text?'<description id="'+y(e.id)+'">'+y(e.text)+"</description>":"",l+='<rect width="100%" height="100%" fill="white" cx="0" cy="0"/>',l+='<path d="',a=0;a<f.getModuleCount();a+=1)for(u=a*t+r,i=0;i<f.getModuleCount();i+=1)f.isDark(a,i)&&(l+="M"+(i*t+r)+","+u+c);return l+='" stroke="transparent" fill="black"/>',l+="</svg>"},f.createDataURL=function(t,r){t=t||2,r=void 0===r?4*t:r;var e=f.getModuleCount()*t+2*r,n=r,o=e-r;return I(e,e,(function(r,e){if(n<=r&&r<o&&n<=e&&e<o){var i=Math.floor((r-n)/t),a=Math.floor((e-n)/t);return f.isDark(a,i)?0:1}return 1}))},f.createImgTag=function(t,r,e){t=t||2,r=void 0===r?4*t:r;var n=f.getModuleCount()*t+2*r,o="";return o+="<img",o+=' src="',o+=f.createDataURL(t,r),o+='"',o+=' width="',o+=n,o+='"',o+=' height="',o+=n,o+='"',e&&(o+=' alt="',o+=y(e),o+='"'),o+="/>"};var y=function(t){for(var r="",e=0;e<t.length;e+=1){var n=t.charAt(e);switch(n){case"<":r+="&lt;";break;case">":r+="&gt;";break;case"&":r+="&amp;";break;case'"':r+="&quot;";break;default:r+=n}}return r};return f.createASCII=function(t,r){if((t=t||1)<2)return function(t){t=void 0===t?2:t;var r,e,n,o,i,a=1*f.getModuleCount()+2*t,u=t,c=a-t,g={"██":"█","█ ":"▀"," █":"▄","  ":" "},l={"██":"▀","█ ":"▀"," █":" ","  ":" "},h="";for(r=0;r<a;r+=2){for(n=Math.floor((r-u)/1),o=Math.floor((r+1-u)/1),e=0;e<a;e+=1)i="█",u<=e&&e<c&&u<=r&&r<c&&f.isDark(n,Math.floor((e-u)/1))&&(i=" "),u<=e&&e<c&&u<=r+1&&r+1<c&&f.isDark(o,Math.floor((e-u)/1))?i+=" ":i+="█",h+=t<1&&r+1>=c?l[i]:g[i];h+="\n"}return a%2&&t>0?h.substring(0,h.length-a-1)+Array(a+1).join("▀"):h.substring(0,h.length-1)}(r);t-=1,r=void 0===r?2*t:r;var e,n,o,i,a=f.getModuleCount()*t+2*r,u=r,c=a-r,g=Array(t+1).join("██"),l=Array(t+1).join("  "),h="",s="";for(e=0;e<a;e+=1){for(o=Math.floor((e-u)/t),s="",n=0;n<a;n+=1)i=1,u<=n&&n<c&&u<=e&&e<c&&f.isDark(o,Math.floor((n-u)/t))&&(i=0),s+=i?g:l;for(o=0;o<t;o+=1)h+=s+"\n"}return h.substring(0,h.length-1)},f.renderTo2dContext=function(t,r){r=r||2;for(var e=f.getModuleCount(),n=0;n<e;n++)for(var o=0;o<e;o++)t.fillStyle=f.isDark(n,o)?"black":"white",t.fillRect(n*r,o*r,r,r)},f};t.stringToBytes=(t.stringToBytesFuncs={default:function(t){for(var r=[],e=0;e<t.length;e+=1){var n=t.charCodeAt(e);r.push(255&n)}return r}}).default,t.createStringToBytes=function(t,r){var e=function(){for(var e=S(t),n=function(){var t=e.read();if(-1==t)throw"eof";return t},o=0,i={};;){var a=e.read();if(-1==a)break;var u=n(),f=n()<<8|n();i[String.fromCharCode(a<<8|u)]=f,o+=1}if(o!=r)throw o+" != "+r;return i}(),n="?".charCodeAt(0);return function(t){for(var r=[],o=0;o<t.length;o+=1){var i=t.charCodeAt(o);if(i<128)r.push(i);else{var a=e[t.charAt(o)];"number"==typeof a?(255&a)==a?r.push(a):(r.push(a>>>8),r.push(255&a)):r.push(n)}}return r}};var r,e,n,o,i,a=1,u=2,f=4,c=8,g={L:1,M:0,Q:3,H:2},l=0,h=1,s=2,v=3,d=4,w=5,p=6,y=7,B=(r=[[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50],[6,30,54],[6,32,58],[6,34,62],[6,26,46,66],[6,26,48,70],[6,26,50,74],[6,30,54,78],[6,30,56,82],[6,30,58,86],[6,34,62,90],[6,28,50,72,94],[6,26,50,74,98],[6,30,54,78,102],[6,28,54,80,106],[6,32,58,84,110],[6,30,58,86,114],[6,34,62,90,118],[6,26,50,74,98,122],[6,30,54,78,102,126],[6,26,52,78,104,130],[6,30,56,82,108,134],[6,34,60,86,112,138],[6,30,58,86,114,142],[6,34,62,90,118,146],[6,30,54,78,102,126,150],[6,24,50,76,102,128,154],[6,28,54,80,106,132,158],[6,32,58,84,110,136,162],[6,26,54,82,110,138,166],[6,30,58,86,114,142,170]],e=1335,n=7973,i=function(t){for(var r=0;0!=t;)r+=1,t>>>=1;return r},(o={}).getBCHTypeInfo=function(t){for(var r=t<<10;i(r)-i(e)>=0;)r^=e<<i(r)-i(e);return 21522^(t<<10|r)},o.getBCHTypeNumber=function(t){for(var r=t<<12;i(r)-i(n)>=0;)r^=n<<i(r)-i(n);return t<<12|r},o.getPatternPosition=function(t){return r[t-1]},o.getMaskFunction=function(t){switch(t){case l:return function(t,r){return(t+r)%2==0};case h:return function(t,r){return t%2==0};case s:return function(t,r){return r%3==0};case v:return function(t,r){return(t+r)%3==0};case d:return function(t,r){return(Math.floor(t/2)+Math.floor(r/3))%2==0};case w:return function(t,r){return t*r%2+t*r%3==0};case p:return function(t,r){return(t*r%2+t*r%3)%2==0};case y:return function(t,r){return(t*r%3+(t+r)%2)%2==0};default:throw"bad maskPattern:"+t}},o.getErrorCorrectPolynomial=function(t){for(var r=k([1],0),e=0;e<t;e+=1)r=r.multiply(k([1,C.gexp(e)],0));return r},o.getLengthInBits=function(t,r){if(1<=r&&r<10)switch(t){case a:return 10;case u:return 9;case f:case c:return 8;default:throw"mode:"+t}else if(r<27)switch(t){case a:return 12;case u:return 11;case f:return 16;case c:return 10;default:throw"mode:"+t}else{if(!(r<41))throw"type:"+r;switch(t){case a:return 14;case u:return 13;case f:return 16;case c:return 12;default:throw"mode:"+t}}},o.getLostPoint=function(t){for(var r=t.getModuleCount(),e=0,n=0;n<r;n+=1)for(var o=0;o<r;o+=1){for(var i=0,a=t.isDark(n,o),u=-1;u<=1;u+=1)if(!(n+u<0||r<=n+u))for(var f=-1;f<=1;f+=1)o+f<0||r<=o+f||0==u&&0==f||a==t.isDark(n+u,o+f)&&(i+=1);i>5&&(e+=3+i-5)}for(n=0;n<r-1;n+=1)for(o=0;o<r-1;o+=1){var c=0;t.isDark(n,o)&&(c+=1),t.isDark(n+1,o)&&(c+=1),t.isDark(n,o+1)&&(c+=1),t.isDark(n+1,o+1)&&(c+=1),0!=c&&4!=c||(e+=3)}for(n=0;n<r;n+=1)for(o=0;o<r-6;o+=1)t.isDark(n,o)&&!t.isDark(n,o+1)&&t.isDark(n,o+2)&&t.isDark(n,o+3)&&t.isDark(n,o+4)&&!t.isDark(n,o+5)&&t.isDark(n,o+6)&&(e+=40);for(o=0;o<r;o+=1)for(n=0;n<r-6;n+=1)t.isDark(n,o)&&!t.isDark(n+1,o)&&t.isDark(n+2,o)&&t.isDark(n+3,o)&&t.isDark(n+4,o)&&!t.isDark(n+5,o)&&t.isDark(n+6,o)&&(e+=40);var g=0;for(o=0;o<r;o+=1)for(n=0;n<r;n+=1)t.isDark(n,o)&&(g+=1);return e+=Math.abs(100*g/r/r-50)/5*10},o),C=function(){for(var t=new Array(256),r=new Array(256),e=0;e<8;e+=1)t[e]=1<<e;for(e=8;e<256;e+=1)t[e]=t[e-4]^t[e-5]^t[e-6]^t[e-8];for(e=0;e<255;e+=1)r[t[e]]=e;var n={glog:function(t){if(t<1)throw"glog("+t+")";return r[t]},gexp:function(r){for(;r<0;)r+=255;for(;r>=256;)r-=255;return t[r]}};return n}();function k(t,r){if(void 0===t.length)throw t.length+"/"+r;var e=function(){for(var e=0;e<t.length&&0==t[e];)e+=1;for(var n=new Array(t.length-e+r),o=0;o<t.length-e;o+=1)n[o]=t[o+e];return n}(),n={getAt:function(t){return e[t]},getLength:function(){return e.length},multiply:function(t){for(var r=new Array(n.getLength()+t.getLength()-1),e=0;e<n.getLength();e+=1)for(var o=0;o<t.getLength();o+=1)r[e+o]^=C.gexp(C.glog(n.getAt(e))+C.glog(t.getAt(o)));return k(r,0)},mod:function(t){if(n.getLength()-t.getLength()<0)return n;for(var r=C.glog(n.getAt(0))-C.glog(t.getAt(0)),e=new Array(n.getLength()),o=0;o<n.getLength();o+=1)e[o]=n.getAt(o);for(o=0;o<t.getLength();o+=1)e[o]^=C.gexp(C.glog(t.getAt(o))+r);return k(e,0).mod(t)}};return n}var A=function(){var t=[[1,26,19],[1,26,16],[1,26,13],[1,26,9],[1,44,34],[1,44,28],[1,44,22],[1,44,16],[1,70,55],[1,70,44],[2,35,17],[2,35,13],[1,100,80],[2,50,32],[2,50,24],[4,25,9],[1,134,108],[2,67,43],[2,33,15,2,34,16],[2,33,11,2,34,12],[2,86,68],[4,43,27],[4,43,19],[4,43,15],[2,98,78],[4,49,31],[2,32,14,4,33,15],[4,39,13,1,40,14],[2,121,97],[2,60,38,2,61,39],[4,40,18,2,41,19],[4,40,14,2,41,15],[2,146,116],[3,58,36,2,59,37],[4,36,16,4,37,17],[4,36,12,4,37,13],[2,86,68,2,87,69],[4,69,43,1,70,44],[6,43,19,2,44,20],[6,43,15,2,44,16],[4,101,81],[1,80,50,4,81,51],[4,50,22,4,51,23],[3,36,12,8,37,13],[2,116,92,2,117,93],[6,58,36,2,59,37],[4,46,20,6,47,21],[7,42,14,4,43,15],[4,133,107],[8,59,37,1,60,38],[8,44,20,4,45,21],[12,33,11,4,34,12],[3,145,115,1,146,116],[4,64,40,5,65,41],[11,36,16,5,37,17],[11,36,12,5,37,13],[5,109,87,1,110,88],[5,65,41,5,66,42],[5,54,24,7,55,25],[11,36,12,7,37,13],[5,122,98,1,123,99],[7,73,45,3,74,46],[15,43,19,2,44,20],[3,45,15,13,46,16],[1,135,107,5,136,108],[10,74,46,1,75,47],[1,50,22,15,51,23],[2,42,14,17,43,15],[5,150,120,1,151,121],[9,69,43,4,70,44],[17,50,22,1,51,23],[2,42,14,19,43,15],[3,141,113,4,142,114],[3,70,44,11,71,45],[17,47,21,4,48,22],[9,39,13,16,40,14],[3,135,107,5,136,108],[3,67,41,13,68,42],[15,54,24,5,55,25],[15,43,15,10,44,16],[4,144,116,4,145,117],[17,68,42],[17,50,22,6,51,23],[19,46,16,6,47,17],[2,139,111,7,140,112],[17,74,46],[7,54,24,16,55,25],[34,37,13],[4,151,121,5,152,122],[4,75,47,14,76,48],[11,54,24,14,55,25],[16,45,15,14,46,16],[6,147,117,4,148,118],[6,73,45,14,74,46],[11,54,24,16,55,25],[30,46,16,2,47,17],[8,132,106,4,133,107],[8,75,47,13,76,48],[7,54,24,22,55,25],[22,45,15,13,46,16],[10,142,114,2,143,115],[19,74,46,4,75,47],[28,50,22,6,51,23],[33,46,16,4,47,17],[8,152,122,4,153,123],[22,73,45,3,74,46],[8,53,23,26,54,24],[12,45,15,28,46,16],[3,147,117,10,148,118],[3,73,45,23,74,46],[4,54,24,31,55,25],[11,45,15,31,46,16],[7,146,116,7,147,117],[21,73,45,7,74,46],[1,53,23,37,54,24],[19,45,15,26,46,16],[5,145,115,10,146,116],[19,75,47,10,76,48],[15,54,24,25,55,25],[23,45,15,25,46,16],[13,145,115,3,146,116],[2,74,46,29,75,47],[42,54,24,1,55,25],[23,45,15,28,46,16],[17,145,115],[10,74,46,23,75,47],[10,54,24,35,55,25],[19,45,15,35,46,16],[17,145,115,1,146,116],[14,74,46,21,75,47],[29,54,24,19,55,25],[11,45,15,46,46,16],[13,145,115,6,146,116],[14,74,46,23,75,47],[44,54,24,7,55,25],[59,46,16,1,47,17],[12,151,121,7,152,122],[12,75,47,26,76,48],[39,54,24,14,55,25],[22,45,15,41,46,16],[6,151,121,14,152,122],[6,75,47,34,76,48],[46,54,24,10,55,25],[2,45,15,64,46,16],[17,152,122,4,153,123],[29,74,46,14,75,47],[49,54,24,10,55,25],[24,45,15,46,46,16],[4,152,122,18,153,123],[13,74,46,32,75,47],[48,54,24,14,55,25],[42,45,15,32,46,16],[20,147,117,4,148,118],[40,75,47,7,76,48],[43,54,24,22,55,25],[10,45,15,67,46,16],[19,148,118,6,149,119],[18,75,47,31,76,48],[34,54,24,34,55,25],[20,45,15,61,46,16]],r=function(t,r){var e={};return e.totalCount=t,e.dataCount=r,e},e={};return e.getRSBlocks=function(e,n){var o=function(r,e){switch(e){case g.L:return t[4*(r-1)+0];case g.M:return t[4*(r-1)+1];case g.Q:return t[4*(r-1)+2];case g.H:return t[4*(r-1)+3];default:return}}(e,n);if(void 0===o)throw"bad rs block @ typeNumber:"+e+"/errorCorrectionLevel:"+n;for(var i=o.length/3,a=[],u=0;u<i;u+=1)for(var f=o[3*u+0],c=o[3*u+1],l=o[3*u+2],h=0;h<f;h+=1)a.push(r(c,l));return a},e}(),b=function(){var t=[],r=0,e={getBuffer:function(){return t},getAt:function(r){var e=Math.floor(r/8);return 1==(t[e]>>>7-r%8&1)},put:function(t,r){for(var n=0;n<r;n+=1)e.putBit(1==(t>>>r-n-1&1))},getLengthInBits:function(){return r},putBit:function(e){var n=Math.floor(r/8);t.length<=n&&t.push(0),e&&(t[n]|=128>>>r%8),r+=1}};return e},M=function(t){var r=a,e=t,n={getMode:function(){return r},getLength:function(t){return e.length},write:function(t){for(var r=e,n=0;n+2<r.length;)t.put(o(r.substring(n,n+3)),10),n+=3;n<r.length&&(r.length-n==1?t.put(o(r.substring(n,n+1)),4):r.length-n==2&&t.put(o(r.substring(n,n+2)),7))}},o=function(t){for(var r=0,e=0;e<t.length;e+=1)r=10*r+i(t.charAt(e));return r},i=function(t){if("0"<=t&&t<="9")return t.charCodeAt(0)-"0".charCodeAt(0);throw"illegal char :"+t};return n},x=function(t){var r=u,e=t,n={getMode:function(){return r},getLength:function(t){return e.length},write:function(t){for(var r=e,n=0;n+1<r.length;)t.put(45*o(r.charAt(n))+o(r.charAt(n+1)),11),n+=2;n<r.length&&t.put(o(r.charAt(n)),6)}},o=function(t){if("0"<=t&&t<="9")return t.charCodeAt(0)-"0".charCodeAt(0);if("A"<=t&&t<="Z")return t.charCodeAt(0)-"A".charCodeAt(0)+10;switch(t){case" ":return 36;case"$":return 37;case"%":return 38;case"*":return 39;case"+":return 40;case"-":return 41;case".":return 42;case"/":return 43;case":":return 44;default:throw"illegal char :"+t}};return n},m=function(r){var e=f,n=t.stringToBytes(r),o={getMode:function(){return e},getLength:function(t){return n.length},write:function(t){for(var r=0;r<n.length;r+=1)t.put(n[r],8)}};return o},L=function(r){var e=c,n=t.stringToBytesFuncs.SJIS;if(!n)throw"sjis not supported.";!function(){var t=n("友");if(2!=t.length||38726!=(t[0]<<8|t[1]))throw"sjis not supported."}();var o=n(r),i={getMode:function(){return e},getLength:function(t){return~~(o.length/2)},write:function(t){for(var r=o,e=0;e+1<r.length;){var n=(255&r[e])<<8|255&r[e+1];if(33088<=n&&n<=40956)n-=33088;else{if(!(57408<=n&&n<=60351))throw"illegal char at "+(e+1)+"/"+n;n-=49472}n=192*(n>>>8&255)+(255&n),t.put(n,13),e+=2}if(e<r.length)throw"illegal char at "+(e+1)}};return i},D=function(){var t=[],r={writeByte:function(r){t.push(255&r)},writeShort:function(t){r.writeByte(t),r.writeByte(t>>>8)},writeBytes:function(t,e,n){e=e||0,n=n||t.length;for(var o=0;o<n;o+=1)r.writeByte(t[o+e])},writeString:function(t){for(var e=0;e<t.length;e+=1)r.writeByte(t.charCodeAt(e))},toByteArray:function(){return t},toString:function(){var r="";r+="[";for(var e=0;e<t.length;e+=1)e>0&&(r+=","),r+=t[e];return r+="]"}};return r},S=function(t){var r=t,e=0,n=0,o=0,i={read:function(){for(;o<8;){if(e>=r.length){if(0==o)return-1;throw"unexpected end of file./"+o}var t=r.charAt(e);if(e+=1,"="==t)return o=0,-1;t.match(/^\s$/)||(n=n<<6|a(t.charCodeAt(0)),o+=6)}var i=n>>>o-8&255;return o-=8,i}},a=function(t){if(65<=t&&t<=90)return t-65;if(97<=t&&t<=122)return t-97+26;if(48<=t&&t<=57)return t-48+52;if(43==t)return 62;if(47==t)return 63;throw"c:"+t};return i},I=function(t,r,e){for(var n=function(t,r){var e=t,n=r,o=new Array(t*r),i={setPixel:function(t,r,n){o[r*e+t]=n},write:function(t){t.writeString("GIF87a"),t.writeShort(e),t.writeShort(n),t.writeByte(128),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(255),t.writeByte(255),t.writeByte(255),t.writeString(","),t.writeShort(0),t.writeShort(0),t.writeShort(e),t.writeShort(n),t.writeByte(0);var r=a(2);t.writeByte(2);for(var o=0;r.length-o>255;)t.writeByte(255),t.writeBytes(r,o,255),o+=255;t.writeByte(r.length-o),t.writeBytes(r,o,r.length-o),t.writeByte(0),t.writeString(";")}},a=function(t){for(var r=1<<t,e=1+(1<<t),n=t+1,i=u(),a=0;a<r;a+=1)i.add(String.fromCharCode(a));i.add(String.fromCharCode(r)),i.add(String.fromCharCode(e));var f,c,g,l=D(),h=(f=l,c=0,g=0,{write:function(t,r){if(t>>>r!=0)throw"length over";for(;c+r>=8;)f.writeByte(255&(t<<c|g)),r-=8-c,t>>>=8-c,g=0,c=0;g|=t<<c,c+=r},flush:function(){c>0&&f.writeByte(g)}});h.write(r,n);var s=0,v=String.fromCharCode(o[s]);for(s+=1;s<o.length;){var d=String.fromCharCode(o[s]);s+=1,i.contains(v+d)?v+=d:(h.write(i.indexOf(v),n),i.size()<4095&&(i.size()==1<<n&&(n+=1),i.add(v+d)),v=d)}return h.write(i.indexOf(v),n),h.write(e,n),h.flush(),l.toByteArray()},u=function(){var t={},r=0,e={add:function(n){if(e.contains(n))throw"dup key:"+n;t[n]=r,r+=1},size:function(){return r},indexOf:function(r){return t[r]},contains:function(r){return void 0!==t[r]}};return e};return i}(t,r),o=0;o<r;o+=1)for(var i=0;i<t;i+=1)n.setPixel(i,o,e(i,o));var a=D();n.write(a);for(var u=function(){var t=0,r=0,e=0,n="",o={},i=function(t){n+=String.fromCharCode(a(63&t))},a=function(t){if(t<0);else{if(t<26)return 65+t;if(t<52)return t-26+97;if(t<62)return t-52+48;if(62==t)return 43;if(63==t)return 47}throw"n:"+t};return o.writeByte=function(n){for(t=t<<8|255&n,r+=8,e+=1;r>=6;)i(t>>>r-6),r-=6},o.flush=function(){if(r>0&&(i(t<<6-r),t=0,r=0),e%3!=0)for(var o=3-e%3,a=0;a<o;a+=1)n+="="},o.toString=function(){return n},o}(),f=a.toByteArray(),c=0;c<f.length;c+=1)u.writeByte(f[c]);return u.flush(),"data:image/gif;base64,"+u};return t}();qrcode.stringToBytesFuncs["UTF-8"]=function(t){return function(t){for(var r=[],e=0;e<t.length;e++){var n=t.charCodeAt(e);n<128?r.push(n):n<2048?r.push(192|n>>6,128|63&n):n<55296||n>=57344?r.push(224|n>>12,128|n>>6&63,128|63&n):(e++,n=65536+((1023&n)<<10|1023&t.charCodeAt(e)),r.push(240|n>>18,128|n>>12&63,128|n>>6&63,128|63&n))}return r}(t)},function(t){"function"==typeof define&&define.amd?define([],t):"object"==typeof exports&&(module.exports=t())}((function(){return qrcode}));
+//# sourceMappingURL=/sm/26b4b0d0b1e283d6b3ec9857ac597d7a60c76ac17be1ef4c965f03086de426bb.map
+</script>
+<script>
+(() => {
+  const $  = s => document.querySelector(s);
+  const out = $('#out');
+  const form = $('#form');
+  const input = $('#q');
+  const goBtn = $('#go');
+  const bar       = $('#bar');
+  const autoChk   = $('#auto');
+  const updatedEl = $('#updated');
+  const refreshBtn= $('#refreshNow');
+  const notifyBtn = $('#notify');
+  const soundBtn  = $('#sound');
+  const awakeBtn  = $('#awake');
+  const customRow   = $('#customRow');
+  const customInput = $('#customPrice');
+  const applyBtn    = $('#applyPrice');
+  const clearBtn    = $('#clearPrice');
+  const customNote  = $('#customNote');
+  const ticker  = $('#ticker');
+  const tkPrice = $('#tkPrice');
+  const tkChg   = $('#tkChg');
+  const tkAgo   = $('#tkAgo');
+  const themeToggle = $('#themeToggle');
+
+  // ---------- auto-refresh state ----------
+  const AUTO_KEY = 'btc-lookup:auto', NOTIFY_KEY = 'btc-lookup:notify', CUSTOM_KEY = 'btc-lookup:customprice:v1';
+  const THEME_KEY = 'btc-lookup:theme', CONF_KEY = 'btc-lookup:conftarget';
+  const REFRESH_MS = 30000;            // poll cadence while the tab is visible
+  const REFRESH_MIN_GAP = 2500;        // de-dupe focus/visibility double-fires
+  const PAGE = 20;                     // transactions shown / loaded per page
+  // user-entered BTC price that overrides every USD figure on the page (null = use real prices)
+  let customPrice = (() => { try { const v = parseFloat(localStorage.getItem(CUSTOM_KEY)); return (isFinite(v) && v > 0) ? v : null; } catch { return null; } })();
+  let confTarget = (() => { try { const v = parseInt(localStorage.getItem(CONF_KEY), 10); return [1,2,3,6].includes(v) ? v : 3; } catch { return 3; } })();
+  const WATCH_KEY = 'btc-lookup:watchlist:v1';
+  let watchlist = (() => { try { return JSON.parse(localStorage.getItem(WATCH_KEY) || '[]'); } catch { return []; } })();
+  const RECENT_KEY = 'btc-lookup:recent:v1', RECENT_MAX = 5;
+  let recent = (() => { try { const a = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); return Array.isArray(a) ? a.slice(0, RECENT_MAX) : []; } catch { return []; } })();
+  let watchTimer = null, watchRefreshing = false;
+  let lastTxId = null, lastTxSnap = null;   // current tx snapshot, for adding it to the watchlist
+  let autoOn   = (() => { try { const v = localStorage.getItem(AUTO_KEY); return v === null ? true : v === '1'; } catch { return true; } })();
+  let notifyOn = (() => { try { return localStorage.getItem(NOTIFY_KEY) === '1'; } catch { return false; } })();
+  const SOUND_KEY = 'btc-lookup:sound';
+  let soundOn = (() => { try { return localStorage.getItem(SOUND_KEY) === '1'; } catch { return false; } })();
+  let audioCtx = null;                 // created on first toggle (needs a user gesture)
+  let wakeLock = null, wakeOn = false; // Screen Wake Lock for phone watch mode
+  let currentQuery = null, currentKind = null;     // 'addr' | 'tx'
+  let lastUpdated = 0, lastRefreshAt = 0;
+  let refreshing = false, lastError = false;
+  let retryTimer = null, retryDelay = 0;   // fast-retry after a failed refresh (e.g. network still waking up)
+  let lastTxConfirmed = null;          // tracks pending -> confirmed for the tx view
+  let lastTxConfs = null;              // confirmations of the watched tx (for target alerts)
+  let livePriceAt = 0;                 // when the live BTC price was last refreshed
+  let liveChangePct = null;            // 24h % change for the ticker
+  let prev24h = null, prev24hAt = 0;   // cached price ~24h ago (refreshed every 5 min)
+  let autoTimer = null, titleTimer = null;
+  const baseTitle = document.title;
+
+  // ---------- helpers ----------
+  const SAT = 1e8;
+  const fmtBtc = sats => {
+    const sign = sats < 0 ? '-' : sats > 0 ? '+' : '';
+    const v = Math.abs(sats) / SAT;
+    return sign + v.toFixed(8);
+  };
+  const fmtUsd = n => {
+    if (n == null || isNaN(n)) return '—';
+    return '$' + n.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  };
+  const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const shortId = id => id ? id.slice(0,8) + '…' + id.slice(-8) : '';
+  const fmtDate = ts => {
+    if (!ts) return 'unconfirmed';
+    const d = new Date(ts * 1000);
+    return d.toISOString().slice(0,10) + ' ' + d.toISOString().slice(11,19) + 'Z';
+  };
+
+  // detect address vs txid
+  const looksLikeTxid  = s => /^[0-9a-f]{64}$/i.test(s);
+  const looksLikeAddr  = s => /^(bc1[a-z0-9]{8,87}|tb1[a-z0-9]{8,87}|[13][a-km-zA-HJ-NP-Z1-9]{25,34})$/.test(s);
+
+  // ---------- price cache (by yyyy-mm-dd) — data from mempool.space ----------
+  const PRICE_KEY = 'btc-lookup:prices:v2';   // v2: switched source CoinGecko -> mempool.space
+  const loadPrices = () => { try { return JSON.parse(localStorage.getItem(PRICE_KEY) || '{}'); } catch { return {}; } };
+  const savePrices = p => { try { localStorage.setItem(PRICE_KEY, JSON.stringify(p)); } catch {} };
+  const priceCache = loadPrices();
+
+  const ymdFromTs = ts => new Date(ts * 1000).toISOString().slice(0,10); // yyyy-mm-dd
+
+  // Historical BTC/USD for a given day, via mempool.space. (CoinGecko's free
+  // historical endpoint now returns 401.) Cached per day; nulls are NOT cached
+  // so a transient failure can retry on the next pass.
+  async function fetchHistoricalPrice(ymd){
+    if (priceCache[ymd] != null) return priceCache[ymd];
+    const today = new Date().toISOString().slice(0,10);
+    if (ymd >= today) return null;                 // today: fall back to the live price
+    try {
+      const ts = Math.floor(Date.parse(ymd + 'T12:00:00Z') / 1000);
+      const j = await getJson(`${MS}/v1/historical-price?currency=USD&timestamp=${ts}`);
+      const usd = j?.prices?.[0]?.USD ?? null;
+      if (usd != null) { priceCache[ymd] = usd; savePrices(priceCache); }
+      return usd;
+    } catch { return null; }
+  }
+
+  async function fetchPricesForDates(dates){
+    // dedupe and fetch in parallel (mempool.space has no tight rate limit)
+    const unique = [...new Set(dates.filter(Boolean))];
+    await Promise.all(unique.map(ymd => fetchHistoricalPrice(ymd).catch(() => null)));
+  }
+
+  // ---------- mempool.space ----------
+  const MS = 'https://mempool.space/api';
+  async function getJson(url){
+    const r = await fetch(url);
+    if (!r.ok) {
+      const text = await r.text().catch(()=> '');
+      throw new Error(`HTTP ${r.status}: ${text || url}`);
+    }
+    return r.json();
+  }
+  const getAddress    = a => getJson(`${MS}/address/${a}`);
+  const getAddressTxs = (a, lastSeen) => getJson(`${MS}/address/${a}/txs${lastSeen ? '/chain/' + lastSeen : ''}`);
+  const getTx         = t => getJson(`${MS}/tx/${t}`);
+  const getTipHeight  = () => getJson(`${MS}/blocks/tip/height`);
+  const getFees       = () => getJson(`${MS}/v1/fees/recommended`);   // sat/vB: fastestFee, halfHourFee, hourFee…
+
+  // current BTC/USD price (used for ticker + "value today" + same-day txs).
+  // mempool.space primary; CoinGecko as a fallback so the price never goes blank.
+  async function refreshLivePrice(){
+    let usd = null;
+    try { const j = await getJson(`${MS}/v1/prices`); if (j && typeof j.USD === 'number') usd = j.USD; } catch {}
+    if (usd == null) {
+      try {
+        const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+        if (r.ok) { const j = await r.json(); if (j?.bitcoin?.usd) usd = j.bitcoin.usd; }
+      } catch {}
+    }
+    if (usd == null) return;
+    priceCache.__live = usd; livePriceAt = Date.now(); savePrices(priceCache);
+    // 24h change: refresh the reference price (~24h ago) at most every 5 min
+    if (Date.now() - prev24hAt > 300000) {
+      try {
+        const ago = await getJson(`${MS}/v1/historical-price?currency=USD&timestamp=${Math.floor(Date.now()/1000) - 86400}`);
+        const prev = ago?.prices?.[0]?.USD;
+        if (prev) { prev24h = prev; prev24hAt = Date.now(); }
+      } catch {}
+    }
+    liveChangePct = (prev24h != null && prev24h > 0) ? ((usd - prev24h) / prev24h) * 100 : null;
+    paintTicker();
+  }
+
+  // Effective price = the user's custom override if set, otherwise the real price.
+  const eff = base => (customPrice != null ? customPrice : base);
+  const custTag = () => customPrice != null ? ' <span class="badge cust">custom</span>' : '';
+  // confirmation badge — colour ramps 1→5, turns green ("settled") at 6+
+  const confBadge = confs => confs == null ? ''
+    : `<span class="badge ${confs >= 6 ? 'ok' : 'c' + confs}">✓ ${confs.toLocaleString()} conf${confs === 1 ? '' : 's'}</span>`;
+
+  // compute net sats for an address in a tx
+  function netForAddress(tx, addr){
+    let inSats = 0, outSats = 0;
+    for (const v of tx.vin || [])  if (v.prevout && v.prevout.scriptpubkey_address === addr) inSats  += v.prevout.value || 0;
+    for (const o of tx.vout || []) if (o.scriptpubkey_address === addr)                       outSats += o.value || 0;
+    // received is outSats (paid TO this address); sent is inSats (spent FROM this address)
+    return outSats - inSats;
+  }
+
+  // QR code (client-side, stays private) and clipboard helpers
+  function qrSvg(text){
+    try { const q = qrcode(0, 'M'); q.addData(text); q.make(); return q.createSvgTag({ cellSize: 4, margin: 4, scalable: true }); }
+    catch { return ''; }
+  }
+  async function copyText(text, btn){
+    try { await navigator.clipboard.writeText(text); }
+    catch {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      try { document.execCommand('copy'); } catch {}
+      ta.remove();
+    }
+    if (btn) { const o = btn.textContent; btn.textContent = 'Copied'; btn.classList.add('ok'); setTimeout(() => { btn.textContent = o; btn.classList.remove('ok'); }, 1200); }
+  }
+
+  // ---------- rendering ----------
+  function setOut(html){ out.innerHTML = html; }
+  function loading(msg='Loading…'){ setOut(`<div class="loading"><span class="spinner"></span>${escapeHtml(msg)}</div>`); }
+  function errorBox(msg){ setOut(`<div class="card"><div class="error">${escapeHtml(msg)}</div></div>`); }
+
+  // translate raw API/network errors into something a human can act on
+  function friendlyError(e, q){
+    const m = String((e && e.message) || e);
+    if (/HTTP 404/.test(m)) return looksLikeTxid(q)
+      ? 'Transaction not found — double-check the hash.'
+      : 'Address not found — double-check it and try again.';
+    if (/HTTP 4\d\d/.test(m)) return 'That doesn’t look like a valid Bitcoin address or transaction hash.';
+    if (/HTTP 5\d\d/.test(m)) return 'mempool.space is having trouble right now — try again in a moment.';
+    if (/Failed to fetch|NetworkError|network|load failed/i.test(m)) return 'Network problem — check your connection and try again.';
+    return m;
+  }
+
+  function txRowForAddress(tx, addr, isNew, tipHeight){
+    const net = netForAddress(tx, addr);
+    const ts  = tx.status?.block_time;
+    const ymd = ts ? ymdFromTs(ts) : null;
+    const today = new Date().toISOString().slice(0,10);
+    // Historical price for the tx day; fall back to the live price for today's
+    // and unconfirmed txs (no daily figure yet).
+    let basePrice = ymd ? priceCache[ymd] : null;
+    let usingLive = false;
+    if (basePrice == null && (!ymd || ymd >= today)) {
+      basePrice = priceCache.__live ?? null;
+      usingLive = basePrice != null;
+    }
+    const price = eff(basePrice);                       // custom override wins
+    const usd = (price != null) ? Math.abs(net)/SAT * price : null;
+    const cls = net > 0 ? 'pos' : net < 0 ? 'neg' : '';
+
+    // confirmations when confirmed, else "unconfirmed"
+    let statusBadge = '<span class="badge">unconfirmed</span>';
+    if (tx.status?.confirmed) {
+      const confs = (tipHeight != null && tx.status.block_height != null)
+        ? (tipHeight - tx.status.block_height + 1) : null;
+      statusBadge = confBadge(confs);
+    }
+
+    // no badges in the USD column — the "custom" indicator lives on Value (today)
+    const usdCell = usd != null ? fmtUsd(usd) : (ts ? '—' : '');
+    return `
+      <tr class="${isNew ? 'flash' : ''}">
+        <td>
+          <a class="mono" href="?q=${encodeURIComponent(tx.txid)}" data-opentx="${escapeHtml(tx.txid)}" title="Open transaction details">
+            <span class="txid">${shortId(tx.txid)}</span>
+          </a>${statusBadge}
+          <div class="when">${escapeHtml(fmtDate(ts))}</div>
+        </td>
+        <td class="num ${cls}">${fmtBtc(net)}</td>
+        <td class="num">${usdCell}</td>
+      </tr>`;
+  }
+
+  let addrState = null; // { addr, txs: [...], lastSeenTxid, info }
+
+  async function loadMoreAddressTxs(){
+    if (!addrState) return;
+    const btn = document.getElementById('moreBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Loading…'; }
+    try {
+      const oldShown = addrState.shown;
+      const target   = addrState.shown + PAGE;
+
+      // only hit the network if we've run out of already-fetched transactions
+      if (target > addrState.txs.length && !addrState.exhausted) {
+        const next = await getAddressTxs(addrState.addr, addrState.lastSeenTxid);
+        if (!next.length) {
+          addrState.exhausted = true;
+        } else {
+          addrState.txs.push(...next);
+          addrState.lastSeenTxid = next[next.length - 1].txid;
+          const total = addrState.info.chain_stats.tx_count + addrState.info.mempool_stats.tx_count;
+          if (addrState.txs.length >= total) addrState.exhausted = true;
+        }
+      }
+
+      addrState.shown = Math.min(target, addrState.txs.length);
+      // price only the newly-revealed slice
+      await fetchPricesForDates(addrState.txs.slice(oldShown, addrState.shown)
+        .map(t => t.status?.block_time ? ymdFromTs(t.status.block_time) : null));
+
+      renderAddress(addrState);
+    } catch (e) {
+      // quiet inline failure — the button itself becomes the retry
+      if (btn) { btn.disabled = false; btn.textContent = 'Couldn’t load — tap to retry'; }
+    }
+  }
+
+  function renderAddress(state, opts){
+    const { addr, info, txs } = state;
+    const highlight = opts && opts.highlight;
+    const funded = info.chain_stats.funded_txo_sum + info.mempool_stats.funded_txo_sum;
+    const spent  = info.chain_stats.spent_txo_sum + info.mempool_stats.spent_txo_sum;
+    const balance = funded - spent;
+    const txCount = info.chain_stats.tx_count + info.mempool_stats.tx_count;
+
+    // current value of balance (custom override wins)
+    const balPrice = eff(priceCache.__live ?? null);
+    const balUsd = balPrice != null ? (balance/SAT) * balPrice : null;
+
+    const shown = Math.min(state.shown || txs.length, txs.length);
+    const visible = txs.slice(0, shown);
+    const rows = visible.map(t => txRowForAddress(t, addr, highlight ? highlight.has(t.txid) : false, state.tipHeight)).join('');
+
+    const hasMore = shown < txs.length || !state.exhausted;
+    const moreBtn = hasMore
+      ? `<div class="more">
+           <div style="color:var(--muted);font-size:12px;margin-bottom:8px">Showing ${shown.toLocaleString()} of ${txCount.toLocaleString()}</div>
+           <button id="moreBtn" type="button">Load ${PAGE} more</button>
+         </div>` : '';
+
+    setOut(`
+      <div class="card">
+        <div class="head">
+          <span class="label">Address</span>
+          <span class="value mono">${escapeHtml(addr)}</span>
+          <button class="copybtn" type="button" data-copy="${escapeHtml(addr)}">Copy</button>
+          ${watchBtn('addr', addr)}
+        </div>
+        <div class="qrwrap">
+          <div class="qrbox">${qrSvg(addr)}</div>
+          <div class="qrcap">QR for this address — scan to send BTC here.</div>
+        </div>
+        <div class="stats">
+          <div><div class="k">Balance</div><div class="v">${fmtBtc(balance)} BTC</div></div>
+          <div><div class="k">Value (today)</div><div class="v">${fmtUsd(balUsd)}${custTag()}</div></div>
+          <div><div class="k">Total received</div><div class="v">${(funded/SAT).toFixed(8)} BTC</div></div>
+          <div><div class="k">Transactions</div><div class="v">${txCount.toLocaleString()}</div></div>
+        </div>
+        <table>
+          <thead>
+            <tr><th>Transaction</th><th class="num">Amount (BTC)</th><th class="num">USD (at time)</th></tr>
+          </thead>
+          <tbody>${rows || `<tr><td colspan="3" class="empty">No transactions.</td></tr>`}</tbody>
+        </table>
+        ${moreBtn}
+      </div>
+    `);
+    const mb = document.getElementById('moreBtn');
+    if (mb) mb.addEventListener('click', loadMoreAddressTxs);
+  }
+
+  async function lookupAddress(addr){
+    loading('Fetching address…');
+    const [info, txs, tipHeight] = await Promise.all([
+      getAddress(addr), getAddressTxs(addr), getTipHeight().catch(() => null)
+    ]);
+
+    await refreshLivePrice();
+
+    const total = info.chain_stats.tx_count + info.mempool_stats.tx_count;
+    addrState = {
+      addr, info, txs, tipHeight,
+      shown: Math.min(PAGE, txs.length),
+      lastSeenTxid: txs.length ? txs[txs.length-1].txid : null,
+      exhausted: txs.length >= total
+    };
+
+    // price only the first page so the initial render is fast
+    loading('Loading USD prices…');
+    await fetchPricesForDates(addrState.txs.slice(0, addrState.shown)
+      .map(t => t.status?.block_time ? ymdFromTs(t.status.block_time) : null));
+
+    renderAddress(addrState);
+  }
+
+  // Silent refresh for the address view: fetches the newest page and merges it
+  // into existing state so already-loaded ("Load older") history is preserved.
+  async function refreshAddress(){
+    if (!addrState) return;
+    const addr = addrState.addr;
+    const [info, latest, tipHeight] = await Promise.all([
+      getAddress(addr), getAddressTxs(addr), getTipHeight().catch(() => addrState.tipHeight)
+    ]);
+    await refreshLivePrice();
+
+    const known      = new Set(addrState.txs.map(t => t.txid));
+    const latestById = new Map(latest.map(t => [t.txid, t]));
+    const newOnes    = latest.filter(t => !known.has(t.txid));
+
+    // promote any of our known txs that just went from pending -> confirmed
+    const newlyConfirmed = [];
+    for (const t of addrState.txs){
+      const fresh = latestById.get(t.txid);
+      if (fresh && fresh.status?.confirmed && !t.status?.confirmed){
+        t.status = fresh.status;
+        newlyConfirmed.push(t);
+      }
+    }
+
+    if (newOnes.length || newlyConfirmed.length){
+      await fetchPricesForDates([...newOnes, ...newlyConfirmed]
+        .map(t => t.status?.block_time ? ymdFromTs(t.status.block_time) : null));
+    }
+
+    addrState.txs  = [...newOnes, ...addrState.txs];   // newest first
+    addrState.info = info;
+    addrState.tipHeight = tipHeight ?? addrState.tipHeight;
+    if (newOnes.length) addrState.shown += newOnes.length;  // keep visible rows, add new ones on top
+
+    renderAddress(addrState, { highlight: new Set(newOnes.map(t => t.txid)) });
+
+    if (newOnes.length){
+      const net  = newOnes.reduce((s, t) => s + netForAddress(t, addr), 0);
+      const verb = net >= 0 ? 'received' : 'sent';
+      notify(`${newOnes.length} new transaction${newOnes.length > 1 ? 's' : ''}`,
+             `${fmtBtc(net)} BTC ${verb} · ${shortId(addr)}`);
+    } else if (newlyConfirmed.length){
+      notify('Transaction confirmed',
+             `${newlyConfirmed.length} now confirmed · ${shortId(addr)}`);
+    }
+  }
+
+  async function lookupTx(txid, silent){
+    if (!silent) loading('Fetching transaction…');
+    const [tx, tipHeight] = await Promise.all([getTx(txid), getTipHeight().catch(() => null)]);
+    const ts = tx.status?.block_time;
+    const ymd = ts ? ymdFromTs(ts) : null;
+
+    await refreshLivePrice();
+    const livePrice = priceCache.__live ?? null;
+    let histPrice = ymd ? await fetchHistoricalPrice(ymd) : null;
+    const todayYmd = new Date().toISOString().slice(0,10);
+    // a tx from today / still unconfirmed has no daily close yet — use the current price as "at time"
+    if (histPrice == null && (!ymd || ymd >= todayYmd)) histPrice = livePrice;
+    const confirmations = (tx.status?.confirmed && tipHeight != null)
+      ? (tipHeight - tx.status.block_height + 1) : null;
+
+    const totalIn  = (tx.vin  || []).reduce((s,v) => s + (v.prevout?.value || 0), 0);
+    const totalOut = (tx.vout || []).reduce((s,v) => s + (v.value || 0), 0);
+    const fee = totalIn - totalOut;
+    const vsize = tx.weight ? Math.ceil(tx.weight / 4) : (tx.size || null);
+    const feeRate = (vsize && fee > 0) ? fee / vsize : null;   // sat/vB
+
+    const effHist = eff(histPrice);     // custom override wins
+    const effLive = eff(livePrice);
+    const histUsdOut = effHist != null ? (totalOut/SAT) * effHist : null;
+    const liveUsdOut = effLive != null ? (totalOut/SAT) * effLive : null;
+
+    // real addresses open in-app; non-standard scripts stay plain text
+    const addrCell = a => a !== '(non-standard)'
+      ? `<a class="mono" href="?q=${encodeURIComponent(a)}" data-openaddr="${escapeHtml(a)}" title="Look up this address">${escapeHtml(a)}</a>`
+      : `<span class="mono">${escapeHtml(a)}</span>`;
+
+    const inputsRows = (tx.vin || []).map(v => {
+      const a = v.prevout?.scriptpubkey_address || '(non-standard)';
+      const s = v.prevout?.value || 0;
+      const u = effHist != null ? (s/SAT) * effHist : null;
+      return `<tr>
+        <td>${addrCell(a)}</td>
+        <td class="num">${(s/SAT).toFixed(8)}</td>
+        <td class="num">${u != null ? fmtUsd(u) : '—'}</td>
+      </tr>`;
+    }).join('');
+
+    const outputsRows = (tx.vout || []).map(o => {
+      const a = o.scriptpubkey_address || '(non-standard)';
+      const s = o.value || 0;
+      const u = effHist != null ? (s/SAT) * effHist : null;
+      return `<tr>
+        <td>${addrCell(a)}</td>
+        <td class="num">${(s/SAT).toFixed(8)}</td>
+        <td class="num">${u != null ? fmtUsd(u) : '—'}</td>
+      </tr>`;
+    }).join('');
+
+    const status = tx.status?.confirmed
+      ? `Confirmed${confirmations != null ? ` · ${confirmations.toLocaleString()} conf` : ''}`
+      : `<span class="pending">Unconfirmed (in mempool)</span>`;
+    lastTxConfirmed = tx.status?.confirmed === true;
+    lastTxConfs = confirmations;
+    lastTxId = tx.txid; lastTxSnap = { confirmed: lastTxConfirmed, confs: confirmations };
+
+    const confsNow = confirmations || 0;
+    const pctC = Math.min(100, Math.round(confsNow / confTarget * 100));
+    const metTarget = confsNow >= confTarget;
+    const confProgress = `
+      <div class="confbar${metTarget ? ' met' : ''}">
+        <span class="lbl">Alert at</span>
+        <select id="confTarget" aria-label="Confirmation target">${[1,2,3,6].map(n => `<option value="${n}"${n === confTarget ? ' selected' : ''}>${n}</option>`).join('')}</select>
+        <span class="lbl">confs</span>
+        <div class="progress"><div style="width:${pctC}%"></div></div>
+        <span class="pct">${metTarget ? '✓ target reached' : confsNow + ' / ' + confTarget}</span>
+      </div>`;
+
+    // why-is-it-stuck panel: compare this tx's fee rate to the network's going rates
+    let feePanel = '';
+    if (!tx.status?.confirmed && feeRate != null){
+      let fees = null; try { fees = await getFees(); } catch {}
+      if (fees && fees.fastestFee){
+        let cls = 'bad', verdict = 'Below the going rate — could be stuck for a long time';
+        if      (feeRate >= fees.fastestFee)        { cls = 'good'; verdict = 'Should confirm in the next block'; }
+        else if (feeRate >= fees.halfHourFee)       { cls = 'good'; verdict = 'Likely confirms within ~30 min'; }
+        else if (feeRate >= fees.hourFee)           { cls = 'warn'; verdict = 'Likely confirms within ~1 hour'; }
+        else if (feeRate >= (fees.economyFee ?? 1)) { cls = 'warn'; verdict = 'Low priority — could take hours'; }
+        feePanel = `
+          <div class="confbar">
+            <span class="lbl">This tx pays</span>
+            <span class="pct">${feeRate.toFixed(1)} sat/vB</span>
+            <span class="lbl">· network now: ${fees.fastestFee} fast / ${fees.halfHourFee} ~30m / ${fees.hourFee} ~1h</span>
+            <span class="pct fee-verdict ${cls}">${verdict}</span>
+          </div>`;
+      }
+    }
+
+    setOut(`
+      <div class="card">
+        <div class="head">
+          <span class="label">Transaction</span>
+          <span class="value mono">${escapeHtml(tx.txid)}</span>
+          <button class="copybtn" type="button" data-copy="${escapeHtml(tx.txid)}">Copy</button>
+          ${watchBtn('tx', tx.txid)}
+        </div>
+        <div class="stats">
+          <div><div class="k">Status</div><div class="v">${status}</div>${tx.status?.confirmed ? `<div class="when">block ${tx.status.block_height.toLocaleString()}</div>` : ''}</div>
+          <div><div class="k">When</div><div class="v">${escapeHtml(fmtDate(ts))}</div></div>
+          <div><div class="k">Sent</div><div class="v">${(totalOut/SAT).toFixed(8)} BTC</div></div>
+          <div><div class="k">Fee</div><div class="v">${(fee/SAT).toFixed(8)} BTC</div>${feeRate != null ? `<div class="when">${feeRate.toFixed(1)} sat/vB</div>` : ''}</div>
+          <div><div class="k">USD at time</div><div class="v">${histUsdOut != null ? fmtUsd(histUsdOut) : '—'}${custTag()}</div></div>
+          <div><div class="k">USD today</div><div class="v">${liveUsdOut != null ? fmtUsd(liveUsdOut) : '—'}${custTag()}</div></div>
+          <div><div class="k">BTC price (then)</div><div class="v">${effHist != null ? fmtUsd(effHist) : '—'}${custTag()}</div></div>
+          <div><div class="k">BTC price (now)</div><div class="v">${effLive != null ? fmtUsd(effLive) : '—'}${custTag()}</div></div>
+        </div>
+        ${confProgress}
+        ${feePanel}
+        <table>
+          <thead><tr><th>Inputs (${(tx.vin||[]).length})</th><th class="num">BTC</th><th class="num">USD (at time)</th></tr></thead>
+          <tbody>${inputsRows || '<tr><td colspan="3" class="empty">—</td></tr>'}</tbody>
+        </table>
+        <table>
+          <thead><tr><th>Outputs (${(tx.vout||[]).length})</th><th class="num">BTC</th><th class="num">USD (at time)</th></tr></thead>
+          <tbody>${outputsRows || '<tr><td colspan="3" class="empty">—</td></tr>'}</tbody>
+        </table>
+      </div>
+    `);
+    const sel = document.getElementById('confTarget');
+    if (sel) sel.addEventListener('change', () => {
+      const v = parseInt(sel.value, 10);
+      confTarget = [1,2,3,6].includes(v) ? v : 3;
+      try { localStorage.setItem(CONF_KEY, String(confTarget)); } catch {}
+      rerenderCurrent();
+    });
+  }
+
+  async function runQuery(raw){
+    const q = (raw || '').trim();
+    if (!q) return;
+
+    // Update URL & input
+    input.value = q;
+    const url = new URL(location.href);
+    url.searchParams.set('q', q);
+    history.replaceState(null, '', url.toString());
+
+    goBtn.disabled = true;
+    clearAuto();
+    try {
+      if (looksLikeTxid(q))      { await lookupTx(q);      onLoaded('tx', q); }
+      else if (looksLikeAddr(q)) { await lookupAddress(q); onLoaded('addr', q); }
+      else { stopWatching(); errorBox('That doesn’t look like a Bitcoin address or a 64-character transaction hash.'); }
+    } catch (e) {
+      stopWatching();
+      errorBox(friendlyError(e, q));
+    } finally {
+      goBtn.disabled = false;
+    }
+  }
+
+  // ---------- auto-refresh engine ----------
+  const rel = s => s < 60 ? s + 's' : (s < 3600 ? Math.floor(s/60) + 'm' : Math.floor(s/3600) + 'h');
+
+  function stopWatching(){ currentQuery = null; currentKind = null; clearAuto(); paintBar(); }
+
+  function onLoaded(kind, q){
+    currentKind = kind;
+    currentQuery = q;
+    lastUpdated = Date.now();
+    lastError = false;
+    paintBar();
+    paintNotifyBtn();
+    scheduleAuto();
+    addRecent(q);
+    // if this item is watched, opening it marks it "seen" and clears the change flag
+    const w = findWatch(kind, q);
+    if (w){
+      w.cur = w.seen = (kind === 'addr' && addrState) ? snapForAddr(addrState.info)
+                     : (kind === 'tx') ? { confirmed: lastTxConfirmed === true, confs: lastTxConfs } : w.cur;
+      w.changed = false; w._notified = false; saveWatch();
+    }
+  }
+
+  function paintBar(){
+    bar.classList.toggle('show', !!currentQuery);
+    bar.classList.toggle('live', !!currentQuery && autoOn);
+    let txt = '';
+    if (refreshing)             txt = 'Refreshing…';
+    else if (!navigator.onLine) txt = 'Offline — will refresh when back online';
+    else if (lastError)         txt = 'Reconnecting…';
+    else if (lastUpdated){
+      const s = Math.round((Date.now() - lastUpdated) / 1000);
+      txt = s < 5 ? 'Updated just now' : `Updated ${rel(s)} ago`;
+    }
+    updatedEl.textContent = txt;
+  }
+
+  function paintTicker(){
+    const p = priceCache.__live;
+    if (p == null) { ticker.hidden = true; return; }
+    ticker.hidden = false;
+    tkPrice.textContent = '$' + Math.round(p).toLocaleString('en-US');
+    if (liveChangePct != null) {
+      const up = liveChangePct >= 0;
+      tkChg.className = 'tk-chg ' + (up ? 'up' : 'down');
+      tkChg.textContent = (up ? '▲ ' : '▼ ') + Math.abs(liveChangePct).toFixed(2) + '% 24h';
+    } else {
+      tkChg.className = 'tk-chg';
+      tkChg.textContent = '';
+    }
+    tkAgo.textContent = livePriceAt
+      ? ((Date.now() - livePriceAt) < 5000 ? 'just now' : rel(Math.round((Date.now() - livePriceAt) / 1000)) + ' ago')
+      : '';
+  }
+
+  function paintNotifyBtn(){
+    if (!('Notification' in window)){ notifyBtn.textContent = '🔔 Unsupported'; notifyBtn.disabled = true; return; }
+    if (Notification.permission === 'denied'){ notifyBtn.textContent = '🔔 Blocked'; notifyBtn.disabled = true; return; }
+    notifyBtn.disabled = false;
+    notifyBtn.textContent = (notifyOn && Notification.permission === 'granted') ? '🔔 Alerts on' : '🔔 Notify me';
+  }
+
+  function clearAuto(){ if (autoTimer){ clearInterval(autoTimer); autoTimer = null; } }
+  function scheduleAuto(){
+    clearAuto();
+    if (!autoOn || !currentQuery) return;
+    // keeps polling in hidden tabs too (browser throttles to ~1/min there), so
+    // alerts can fire while you're working in another tab
+    autoTimer = setInterval(() => doRefresh(), REFRESH_MS);
+  }
+
+  function clearRetry(){ if (retryTimer){ clearTimeout(retryTimer); retryTimer = null; } retryDelay = 0; }
+  function scheduleRetry(){
+    if (retryTimer) return;                                             // one pending retry at a time
+    retryDelay = Math.min(retryDelay ? retryDelay * 2 : 3000, 20000);  // 3s → 6s → 12s → 20s, instead of waiting 30s
+    retryTimer = setTimeout(() => { retryTimer = null; doRefresh(true); }, retryDelay);
+  }
+  async function doRefresh(force){
+    if (!currentQuery || refreshing) return;
+    if (!force && Date.now() - lastRefreshAt < REFRESH_MIN_GAP) return; // de-dupe focus+visibility
+    refreshing = true; paintBar();
+    try {
+      if (currentKind === 'addr') await refreshAddress();
+      else                        await refreshTx();
+      lastUpdated = Date.now(); lastError = false;
+      clearRetry();                       // recovered — drop back to the normal cadence
+    } catch (e) {
+      lastError = true;
+      scheduleRetry();                    // network's probably still waking up — retry in a few seconds
+    } finally {
+      refreshing = false; lastRefreshAt = Date.now(); paintBar();
+    }
+  }
+
+  async function refreshTx(){
+    const prevConfd = lastTxConfirmed, prevConfs = lastTxConfs;
+    await lookupTx(currentQuery, true);          // silent re-render
+    if (prevConfd === false && lastTxConfirmed === true){
+      notify('Transaction confirmed', shortId(currentQuery));
+    }
+    if (prevConfs != null && lastTxConfs != null && prevConfs < confTarget && lastTxConfs >= confTarget){
+      notify(`Reached ${confTarget} confirmations`, shortId(currentQuery));
+    }
+  }
+
+  function notify(title, body){
+    if (notifyOn && 'Notification' in window && Notification.permission === 'granted'){
+      try { new Notification(title, { body, tag: 'btc-lookup' }); } catch {}
+    }
+    if (soundOn){
+      beep();
+      try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch {}
+    }
+    flashTitle(title);
+  }
+
+  // short double beep — the phone-friendly alert (audio context unlocked by the toggle gesture)
+  function beep(){
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const t = audioCtx.currentTime;
+      [0, 0.25].forEach(off => {
+        const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        o.frequency.value = 880; o.connect(g); g.connect(audioCtx.destination);
+        g.gain.setValueAtTime(0.001, t + off);
+        g.gain.exponentialRampToValueAtTime(0.25, t + off + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.001, t + off + 0.18);
+        o.start(t + off); o.stop(t + off + 0.2);
+      });
+    } catch {}
+  }
+
+  function paintSoundBtn(){
+    soundBtn.classList.toggle('on', soundOn);
+    soundBtn.textContent = soundOn ? '🔊 Sound on' : '🔇 Sound off';
+  }
+
+  // Screen Wake Lock: keeps the phone screen on while watching for a payment.
+  // The OS releases it when the tab is hidden; we re-acquire on return.
+  async function setWake(on){
+    wakeOn = on;
+    if (on){
+      try { wakeLock = await navigator.wakeLock.request('screen'); }
+      catch { wakeOn = false; }
+    } else {
+      try { wakeLock && wakeLock.release(); } catch {}
+      wakeLock = null;
+    }
+    awakeBtn.classList.toggle('on', wakeOn);
+    awakeBtn.textContent = wakeOn ? '📱 Screen stays on' : '📱 Keep screen on';
+  }
+
+  // Blink the tab title so a returning user sees something changed, then restore it.
+  function flashTitle(msg){
+    if (document.visibilityState === 'visible') return;
+    clearInterval(titleTimer);
+    let on = false;
+    titleTimer = setInterval(() => { document.title = on ? baseTitle : ('🔔 ' + msg); on = !on; }, 1000);
+    const stop = () => {
+      clearInterval(titleTimer); titleTimer = null; document.title = baseTitle;
+      window.removeEventListener('focus', stop);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+    const onVis = () => { if (document.visibilityState === 'visible') stop(); };
+    window.addEventListener('focus', stop);
+    document.addEventListener('visibilitychange', onVis);
+  }
+
+  // ---------- custom price override ----------
+  function paintCustom(){
+    const on = customPrice != null;
+    customRow.classList.toggle('active', on);
+    customNote.hidden = !on;
+  }
+  function rerenderCurrent(){
+    if (currentKind === 'addr' && addrState) renderAddress(addrState);
+    else if (currentKind === 'tx' && currentQuery) lookupTx(currentQuery, true).catch(() => {});
+  }
+  function applyCustom(){
+    const v = parseFloat(customInput.value);
+    if (isFinite(v) && v > 0){
+      customPrice = v;
+      try { localStorage.setItem(CUSTOM_KEY, String(v)); } catch {}
+      paintCustom(); rerenderCurrent();
+    } else {
+      clearCustom();   // empty / invalid input clears the override
+    }
+  }
+  function clearCustom(){
+    customPrice = null;
+    customInput.value = '';
+    try { localStorage.removeItem(CUSTOM_KEY); } catch {}
+    paintCustom(); rerenderCurrent();
+  }
+
+  // ---------- watchlist ----------
+  const saveWatch   = () => { try { localStorage.setItem(WATCH_KEY, JSON.stringify(watchlist)); } catch {} };
+  const findWatch   = (kind, id) => watchlist.find(w => w.kind === kind && w.id === id);
+  const isWatched   = (kind, id) => !!findWatch(kind, id);
+  const snapForAddr = info => ({
+    bal: (info.chain_stats.funded_txo_sum + info.mempool_stats.funded_txo_sum) - (info.chain_stats.spent_txo_sum + info.mempool_stats.spent_txo_sum),
+    n: info.chain_stats.tx_count + info.mempool_stats.tx_count
+  });
+  const snapEqual = (a, b) => (!a || !b) ? false : (a.bal !== undefined ? (a.bal === b.bal && a.n === b.n) : (a.confirmed === b.confirmed));
+
+  function watchBtn(kind, id){
+    const on = isWatched(kind, id);
+    return `<button class="watchbtn${on ? ' on' : ''}" type="button" data-watch="${kind}" data-id="${escapeHtml(id)}">${on ? '★ Watching' : '☆ Watch'}</button>`;
+  }
+  function toggleWatch(kind, id){
+    const existing = findWatch(kind, id);
+    if (existing) { watchlist = watchlist.filter(w => w !== existing); }
+    else {
+      let seen = null;
+      if (kind === 'addr' && addrState && addrState.addr === id) seen = snapForAddr(addrState.info);
+      else if (kind === 'tx' && lastTxId === id) seen = lastTxSnap;
+      watchlist.push({ kind, id, label: '', seen, cur: seen, changed: false });
+    }
+    saveWatch();
+    document.querySelectorAll('[data-watch]').forEach(b => {
+      const on = isWatched(b.dataset.watch, b.dataset.id);
+      b.classList.toggle('on', on);
+      b.textContent = on ? '★ Watching' : '☆ Watch';
+    });
+  }
+
+  function renderWatchRow(w, live, flashIds){
+    const flash = flashIds && flashIds.has(w.kind + ':' + w.id) ? ' flash' : '';
+    const label = escapeHtml(w.label || (w.kind === 'tx' ? 'Transaction' : 'Address'));
+    let dotClass = '', status = '', meta = '';
+    if (w.kind === 'addr'){
+      const cur = w.cur || w.seen || { bal: 0, n: 0 };
+      const usd = live != null ? (cur.bal / SAT) * eff(live) : null;
+      dotClass = w.changed ? 'changed' : '';
+      status = w.changed ? '<span class="badge ok">▲ new activity</span>' : '';
+      meta = `<div class="wl-bal">${(cur.bal / SAT).toFixed(8)} BTC</div><div class="wl-usd">${fmtUsd(usd)}</div>`;
+    } else {
+      const cur = w.cur || w.seen || { confirmed: false };
+      dotClass = !cur.confirmed ? 'pending' : (w.changed ? 'changed' : '');
+      status = !cur.confirmed ? '<span class="badge">pending</span>'
+             : (w.changed ? '<span class="badge ok">▲ confirmed</span>'
+             : (cur.confs != null ? confBadge(cur.confs) : '<span class="badge ok">✓ confirmed</span>'));
+      meta = `<div class="wl-usd">${cur.confirmed ? 'confirmed' : 'in mempool'}</div>`;
+    }
+    return `
+      <div class="wl-item${flash}" data-id="${escapeHtml(w.id)}" data-kind="${w.kind}">
+        <span class="wl-dot ${dotClass}"></span>
+        <div class="wl-main">
+          <div class="wl-label">${label} ${status}</div>
+          <div class="wl-id mono">${shortId(w.id)}</div>
+        </div>
+        <div class="wl-meta">${meta}</div>
+        <button class="wl-x wl-edit" type="button" data-wledit data-kind="${w.kind}" data-id="${escapeHtml(w.id)}" title="Rename" aria-label="Rename">✎</button>
+        <button class="wl-x" type="button" data-wlx data-kind="${w.kind}" data-id="${escapeHtml(w.id)}" title="Remove" aria-label="Remove">×</button>
+      </div>`;
+  }
+
+  function renderWatch(flashIds){
+    if (currentQuery) return;            // a result is showing; watchlist is the landing view
+    if (!watchlist.length){
+      setOut(`<div class="card"><div class="empty">No saved addresses yet — search an address or transaction and tap ☆ Watch to track it here.</div></div>`);
+      return;
+    }
+    const live = priceCache.__live ?? null;
+    const rows = watchlist.map(w => renderWatchRow(w, live, flashIds)).join('');
+    setOut(`
+      <div class="card">
+        <div class="head">
+          <span class="label">Watchlist · ${watchlist.length}</span>
+          <span class="wl-head-actions"><button class="copybtn" id="wlRefreshBtn" type="button">Refresh all</button></span>
+        </div>
+        ${rows}
+      </div>`);
+    const rb = document.getElementById('wlRefreshBtn');
+    if (rb) rb.addEventListener('click', () => refreshWatch());
+  }
+
+  async function refreshWatch(){
+    if (watchRefreshing || !watchlist.length) return;
+    watchRefreshing = true;
+    try {
+      await refreshLivePrice();
+      const flashIds = new Set();
+      const notes = [];
+      await Promise.all(watchlist.map(async w => {
+        try {
+          let cur;
+          if (w.kind === 'addr'){ const info = await getAddress(w.id); cur = snapForAddr(info); }
+          else {
+            const tx = await getTx(w.id);
+            let confs = null;
+            if (tx.status?.confirmed){ try { const tip = await getTipHeight(); confs = tip - tx.status.block_height + 1; } catch {} }
+            cur = { confirmed: !!tx.status?.confirmed, confs };
+          }
+          w.cur = cur;
+          const changedNow = w.seen ? !snapEqual(cur, w.seen) : false;
+          if (changedNow && !w._notified){ flashIds.add(w.kind + ':' + w.id); notes.push(w); w._notified = true; }
+          if (!changedNow) w._notified = false;
+          w.changed = changedNow;
+        } catch {}
+      }));
+      saveWatch();
+      if (notes.length === 1) notify('Watchlist update', `${notes[0].label || shortId(notes[0].id)} changed`);
+      else if (notes.length > 1) notify('Watchlist update', `${notes.length} watched items changed`);
+      if (!currentQuery) renderWatch(flashIds);
+    } finally { watchRefreshing = false; }
+  }
+
+  function goHome(){
+    stopWatching();
+    input.value = '';
+    const url = new URL(location.href); url.searchParams.delete('q'); history.replaceState(null, '', url.toString());
+    renderWatch();
+  }
+
+  // ---------- recent searches ----------
+  const recentRow = document.getElementById('recentRow');
+  function paintRecent(){
+    if (!recent.length){ recentRow.hidden = true; recentRow.innerHTML = ''; return; }
+    recentRow.hidden = false;
+    recentRow.innerHTML = recent.map(q =>
+      `<button type="button" data-q="${escapeHtml(q)}" title="${escapeHtml(q)}">🕘 ${shortId(q)}</button>`).join('') +
+      `<button type="button" id="recentClear" title="Clear recent searches">× clear</button>`;
+  }
+  function addRecent(q){
+    recent = [q, ...recent.filter(r => r !== q)].slice(0, RECENT_MAX);
+    try { localStorage.setItem(RECENT_KEY, JSON.stringify(recent)); } catch {}
+    paintRecent();
+  }
+  recentRow.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.id === 'recentClear'){
+      recent = [];
+      try { localStorage.removeItem(RECENT_KEY); } catch {}
+      paintRecent();
+    } else if (b.dataset.q) runQuery(b.dataset.q);
+  });
+
+  // ---------- theme (dark / light) ----------
+  function currentTheme(){ return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'; }
+  function applyTheme(t){
+    document.documentElement.setAttribute('data-theme', t);
+    themeToggle.textContent = t === 'dark' ? '☀️' : '🌙';
+    const mt = document.getElementById('metaTheme');
+    if (mt) mt.content = t === 'dark' ? '#0f1216' : '#ffffff';   // tint the browser chrome to match
+  }
+  applyTheme(currentTheme());   // sync toggle icon with the theme set before paint
+  themeToggle.addEventListener('click', () => {
+    const t = currentTheme() === 'dark' ? 'light' : 'dark';
+    try { localStorage.setItem(THEME_KEY, t); } catch {}
+    applyTheme(t);
+  });
+  if (window.matchMedia) {
+    matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+      let stored = null; try { stored = localStorage.getItem(THEME_KEY); } catch {}
+      if (stored !== 'dark' && stored !== 'light') applyTheme(e.matches ? 'dark' : 'light');  // follow OS until user chooses
+    });
+  }
+
+  // ---------- events ----------
+  form.addEventListener('submit', e => { e.preventDefault(); runQuery(input.value); });
+  document.querySelectorAll('.examples button').forEach(b => {
+    b.addEventListener('click', () => runQuery(b.dataset.q));
+  });
+  // copy buttons (delegated, since results are re-rendered)
+  out.addEventListener('click', e => {
+    const b = e.target.closest('.copybtn');
+    if (b && b.dataset.copy) copyText(b.dataset.copy, b);
+  });
+  // watchlist interactions (delegated)
+  out.addEventListener('click', e => {
+    const op = e.target.closest('[data-opentx]');
+    if (op){ e.preventDefault(); runQuery(op.dataset.opentx); window.scrollTo(0, 0); return; }
+    const oa = e.target.closest('[data-openaddr]');
+    if (oa){ e.preventDefault(); runQuery(oa.dataset.openaddr); window.scrollTo(0, 0); return; }
+    const wbtn = e.target.closest('[data-watch]');
+    if (wbtn){ toggleWatch(wbtn.dataset.watch, wbtn.dataset.id); return; }
+    const ed = e.target.closest('[data-wledit]');
+    if (ed){
+      const w = findWatch(ed.dataset.kind, ed.dataset.id);
+      if (w){
+        const v = prompt('Name this watchlist item:', w.label || '');
+        if (v !== null){ w.label = v.trim(); saveWatch(); renderWatch(); }
+      }
+      return;
+    }
+    const x = e.target.closest('[data-wlx]');
+    if (x){ watchlist = watchlist.filter(w => !(w.kind === x.dataset.kind && w.id === x.dataset.id)); saveWatch(); renderWatch(); return; }
+    const row = e.target.closest('.wl-item');
+    if (row && row.dataset.id) runQuery(row.dataset.id);
+  });
+  // logo / title returns to the watchlist dashboard
+  document.querySelector('.logo')?.addEventListener('click', goHome);
+  document.querySelector('header h1')?.addEventListener('click', goHome);
+
+  autoChk.checked = autoOn;
+  autoChk.addEventListener('change', () => {
+    autoOn = autoChk.checked;
+    try { localStorage.setItem(AUTO_KEY, autoOn ? '1' : '0'); } catch {}
+    if (autoOn){ scheduleAuto(); doRefresh(true); } else clearAuto();
+    paintBar();
+  });
+  refreshBtn.addEventListener('click', () => doRefresh(true));
+  applyBtn.addEventListener('click', applyCustom);
+  clearBtn.addEventListener('click', clearCustom);
+  customInput.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); applyCustom(); } });
+  notifyBtn.addEventListener('click', async () => {
+    if (!('Notification' in window)) return;
+    let p = Notification.permission;
+    if (p === 'default') p = await Notification.requestPermission();
+    notifyOn = (p === 'granted');
+    try { localStorage.setItem(NOTIFY_KEY, notifyOn ? '1' : '0'); } catch {}
+    paintNotifyBtn();
+    if (notifyOn) notify('Alerts enabled', 'You’ll be notified when this address or transaction changes.');
+  });
+  soundBtn.addEventListener('click', () => {
+    soundOn = !soundOn;
+    try { localStorage.setItem(SOUND_KEY, soundOn ? '1' : '0'); } catch {}
+    paintSoundBtn();
+    if (soundOn) beep();   // confirms it works and unlocks audio with this gesture
+  });
+  awakeBtn.addEventListener('click', () => setWake(!wakeOn));
+  if (!('wakeLock' in navigator)) awakeBtn.hidden = true;
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && wakeOn) setWake(true);   // OS drops the lock when hidden
+  });
+
+  // The key fix: catch up the instant the tab/window is shown again.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible'){
+      if (currentQuery && autoOn){ doRefresh(); scheduleAuto(); }
+      refreshWatch();
+    }
+  });
+  window.addEventListener('focus',  () => { if (currentQuery && autoOn) doRefresh(); refreshWatch(); });
+  window.addEventListener('pageshow', e => { if (e.persisted){ if (currentQuery && autoOn) doRefresh(true); refreshWatch(); } });
+  // recover the instant connectivity returns, rather than waiting for the next interval
+  window.addEventListener('online',  () => { paintBar(); if (currentQuery && autoOn) doRefresh(true); refreshWatch(); });
+  window.addEventListener('offline', () => paintBar());
+
+  // keep the "updated Ns ago" label + price ticker ticking
+  setInterval(() => { paintTicker(); if (currentQuery) paintBar(); }, 1000);
+  paintNotifyBtn();
+  paintSoundBtn();
+
+  // restore a saved custom price
+  if (customPrice != null) customInput.value = customPrice;
+  paintCustom();
+  paintRecent();
+
+  // show the live BTC price right away, even before a search
+  paintTicker();
+  refreshLivePrice();
+
+  // boot: open a deep-linked query, otherwise show the watchlist dashboard
+  const initial = new URLSearchParams(location.search).get('q');
+  if (initial) runQuery(initial);
+  else renderWatch();
+  watchTimer = setInterval(() => refreshWatch(), REFRESH_MS);   // runs in hidden tabs too (throttled by the browser)
+  refreshWatch();
+})();
+</script>
+</body>
+</html>
