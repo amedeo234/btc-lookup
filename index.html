@@ -273,6 +273,7 @@
   .pos{color:var(--green);font-weight:600}
   .neg{color:var(--red);font-weight:600}
   .pending{color:var(--pending);font-weight:600}
+  .pending-dots{color:var(--muted);letter-spacing:1px}
   .badge{display:inline-block;background:var(--chip);color:var(--chip-fg);border-radius:999px;padding:2px 8px;font-size:11px;margin-left:6px}
 
   .empty,.error,.loading{padding:24px;text-align:center;color:var(--muted)}
@@ -588,8 +589,10 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       statusBadge = confBadge(confs);
     }
 
-    // no badges in the USD column — the "custom" indicator lives on Value (today)
-    const usdCell = usd != null ? fmtUsd(usd) : (ts ? '—' : '');
+    // no badges in the USD column — the "custom" indicator lives on Value (today).
+    // while prices are still arriving, show a placeholder rather than a bare dash
+    const usdCell = usd != null ? fmtUsd(usd)
+                  : (ts ? (pricesLoading ? '<span class="pending-dots">···</span>' : '—') : '');
     return `
       <tr class="${isNew ? 'flash' : ''}">
         <td>
@@ -604,6 +607,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
   }
 
   let addrState = null; // { addr, txs: [...], lastSeenTxid, info }
+  let pricesLoading = false;   // true while historical USD prices are still arriving
 
   async function loadMoreAddressTxs(){
     if (!addrState) return;
@@ -627,11 +631,10 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       }
 
       addrState.shown = Math.min(target, addrState.txs.length);
-      // price only the newly-revealed slice
-      await fetchPricesForDates(addrState.txs.slice(oldShown, addrState.shown)
-        .map(t => t.status?.block_time ? ymdFromTs(t.status.block_time) : null));
-
+      // show the new rows immediately; their USD values fill in behind
+      pricesLoading = true;
       renderAddress(addrState);
+      fillPrices(addrState.addr, oldShown, addrState.shown);
     } catch (e) {
       // quiet inline failure — the button itself becomes the retry
       if (btn) { btn.disabled = false; btn.textContent = 'Couldn’t load — tap to retry'; }
@@ -698,8 +701,6 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       getAddress(addr), getAddressTxs(addr), getTipHeight().catch(() => null)
     ]);
 
-    await refreshLivePrice();
-
     const total = info.chain_stats.tx_count + info.mempool_stats.tx_count;
     addrState = {
       addr, info, txs, tipHeight,
@@ -708,12 +709,28 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       exhausted: txs.length >= total
     };
 
-    // price only the first page so the initial render is fast
-    loading('Loading USD prices…');
-    await fetchPricesForDates(addrState.txs.slice(0, addrState.shown)
-      .map(t => t.status?.block_time ? ymdFromTs(t.status.block_time) : null));
-
+    // Paint now — each historical price is a separate round-trip, so waiting for
+    // all of them before the first render can stall for many seconds on a slow
+    // connection. USD values fill themselves in below.
+    pricesLoading = true;
     renderAddress(addrState);
+    fillPrices(addr, 0, addrState.shown);
+  }
+
+  // Fetch the live + historical prices for a slice of rows, repainting as they land.
+  async function fillPrices(addr, from, to){
+    const stillHere = () => addrState && addrState.addr === addr && currentQuery === addr;
+    const dates = addrState.txs.slice(from, to)
+      .map(t => t.status?.block_time ? ymdFromTs(t.status.block_time) : null);
+    try {
+      // independent of each other — run concurrently rather than back to back
+      await Promise.all([
+        refreshLivePrice().then(() => { if (stillHere()) renderAddress(addrState); }),
+        fetchPricesForDates(dates)
+      ]);
+    } catch {}
+    pricesLoading = false;
+    if (stillHere()) renderAddress(addrState);
   }
 
   // Silent refresh for the address view: fetches the newest page and merges it
