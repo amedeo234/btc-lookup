@@ -63,11 +63,20 @@
     row('Online flag', 'onl');
     row('Service worker', 'sw');
     row('App saved on device (offline copy)', 'cache');
+    row('Preferred data server (learned)', 'best');
     row('1. This page reloaded from server', 'self');
     row('2. The app file (index.html, ~90 KB)', 'app');
-    row('3. Bitcoin data — mempool.space', 'mp');
-    row('4. Backup price source — CoinGecko', 'cg');
+    row('3. Chain data — mempool.space', 'mp');
+    row('4. Chain data — blockstream.info', 'bs');
+    row('5. Chain data — mempool.emzy.de', 'ez');
+    row('6. Chain data — mempool.ninja', 'nj');
+    row('7. Price backup — CoinGecko', 'cg');
     row('Browser', 'ua');
+
+    try {
+      var b = localStorage.getItem('btc-lookup:besthost');
+      set('best', b || 'none yet — app has not run', b ? 'ok' : 'warn');
+    } catch (e) { set('best', 'unavailable', 'warn'); }
 
     var c = navigator.connection || {};
     set('net', (c.effectiveType || 'unknown') + (c.downlink ? ' · ~' + c.downlink + ' Mbps' : '') +
@@ -88,10 +97,12 @@
 
     if (!window.caches) set('cache', 'not supported', 'warn');
     else caches.keys().then(function(keys){
-      if (keys.indexOf('btc-lookup-v1') < 0) return set('cache', 'no offline copy yet', 'warn');
-      return caches.open('btc-lookup-v1').then(function(ch){
+      // match any version of the app cache, not one hardcoded name
+      var name = keys.filter(function(k){ return k.indexOf('btc-lookup') === 0; })[0];
+      if (!name) return set('cache', 'no offline copy yet — open the app once', 'warn');
+      return caches.open(name).then(function(ch){
         return ch.match('./index.html').then(function(m){
-          set('cache', m ? 'YES — app can open without network' : 'cache exists but empty',
+          set('cache', m ? 'YES (' + name + ') — opens without network' : 'cache ' + name + ' is empty',
               m ? 'ok' : 'warn');
         });
       });
@@ -101,14 +112,24 @@
     t.push(timed('self', 'diag.html?probe=' + Date.now()));
     t.push(timed('app',  'index.html?probe=' + Date.now()));
     t.push(timed('mp',   'https://mempool.space/api/blocks/tip/height'));
+    t.push(timed('bs',   'https://blockstream.info/api/blocks/tip/height'));
+    t.push(timed('ez',   'https://mempool.emzy.de/api/blocks/tip/height'));
+    t.push(timed('nj',   'https://mempool.ninja/api/blocks/tip/height'));
     t.push(timed('cg',   'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd'));
 
     Promise.all(t).then(function(r){
-      var siteOk = r[0].ok && r[1].ok, dataOk = r[2].ok || r[3].ok, msg;
-      if (siteOk && dataOk)      msg = 'Everything reachable right now. If the app still misbehaved a moment ago, the problem is intermittent — run this again the moment it fails.';
-      else if (!siteOk && !dataOk) msg = 'Nothing is reachable — this phone has no working internet path at all right now (DNS or connection), not an app problem.';
-      else if (!siteOk)          msg = 'The website could not be fetched but Bitcoin data could. That points at how this phone reaches the host — DNS, or the page being blocked.';
-      else                       msg = 'The website loads but Bitcoin data does not. mempool.space is blocked or unreachable from this phone.';
+      var siteOk  = r[0].ok && r[1].ok;
+      var chain   = [r[2], r[3], r[4], r[5]];
+      var working = chain.filter(function(x){ return x.ok; }).length;
+      var names   = ['mempool.space','blockstream.info','mempool.emzy.de','mempool.ninja'];
+      var dead    = names.filter(function(n,i){ return !chain[i].ok; });
+      var msg;
+      if (!siteOk && working === 0)  msg = 'Nothing is reachable — this phone has no working internet path right now (DNS or connection). Not an app problem.';
+      else if (!siteOk)             msg = 'Bitcoin servers respond but the website itself did not load. That points at DNS or the host being blocked on this phone.';
+      else if (working === 0)       msg = 'The website loads fine, but ALL four Bitcoin data servers failed. Something on this network is blocking blockchain APIs.';
+      else                          msg = working + ' of 4 data servers working' +
+                                           (dead.length ? ' (down: ' + dead.join(', ') + ')' : '') +
+                                           '. The app only needs one, so it should work — it now tries them in turn automatically.';
       document.getElementById('sum').textContent = msg;
     });
   }
